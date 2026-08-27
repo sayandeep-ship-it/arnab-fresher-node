@@ -50,6 +50,24 @@ VendorProfile.belongsTo(User, {
   as: 'user',
 });
 
+
+UserRole.belongsTo(Role, {
+  foreignKey: 'roleId',
+});
+
+Role.hasMany(UserRole, {
+  foreignKey: 'roleId',
+});
+
+UserRole.belongsTo(User, {
+  foreignKey: 'userId',
+});
+
+User.hasMany(UserRole, {
+  foreignKey: 'userId',
+});
+
+
 module.exports = {
   sequelize,
   User,

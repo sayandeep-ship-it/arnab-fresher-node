@@ -1,10 +1,20 @@
 const bcrypt = require('bcryptjs');
 
+const crypto = require('crypto');
+
+const {
+  createAndSendOtp,
+  verifyOtp: verifyOtpService,
+} = require('../services/otpService');
+
 const {
   User,
   Role,
+  UserRole,
   VendorProfile,
 } = require('../models');
+
+
 
 const generateToken = require('../utils/generateToken');
 
@@ -121,7 +131,6 @@ async function vendorLogin(req, res) {
 async function updateVendorAddress(req, res) {
   try {
     const {
-      userId,
       streetAddress,
       city,
       country,
@@ -129,12 +138,8 @@ async function updateVendorAddress(req, res) {
       pincode,
     } = req.body;
 
-    // Validate userId
-    if (!userId) {
-      return res.status(400).json({
-        message: 'userId is required',
-      });
-    }
+    // Get user ID from JWT
+    const userId = req.user.id;
 
     // Validate address fields
     if (
@@ -160,7 +165,8 @@ async function updateVendorAddress(req, res) {
 
     if (!vendorProfile) {
       return res.status(404).json({
-        message: 'Vendor profile not found',
+        message:
+          'Vendor profile not found',
       });
     }
 
@@ -190,17 +196,24 @@ async function updateVendorAddress(req, res) {
         'Vendor address saved successfully',
 
       vendor: {
-        userId: vendorProfile.userId,
+        userId:
+          vendorProfile.userId,
+
         streetAddress:
           vendorProfile.streetAddress,
+
         city:
           vendorProfile.city,
+
         country:
           vendorProfile.country,
+
         state:
           vendorProfile.state,
+
         pincode:
           vendorProfile.pincode,
+
         isAddress:
           vendorProfile.isAddress,
       },
@@ -219,7 +232,275 @@ async function updateVendorAddress(req, res) {
   }
 }
 
+// =====================================================
+// VENDOR FORGOT PASSWORD
+// =====================================================
+
+async function vendorForgotPassword(req, res) {
+  try {
+    const { email } = req.body;
+
+    if (!email) {
+      return res.status(400).json({
+        message: 'Email is required',
+      });
+    }
+
+    // Find user
+    const user = await User.findOne({
+      where: { email },
+    });
+
+    /*
+     * Don't reveal whether the email exists.
+     */
+    if (!user) {
+      return res.json({
+        message:
+          'If the email exists, an OTP has been sent.',
+      });
+    }
+
+    // Verify that this user is a vendor
+    const vendorRole = await UserRole.findOne({
+      where: {
+        userId: user.id,
+      },
+      include: [
+        {
+          model: Role,
+          where: {
+            name: 'vendor',
+          },
+        },
+      ],
+    });
+
+    if (!vendorRole) {
+      return res.json({
+        message:
+          'If the email exists, an OTP has been sent.',
+      });
+    }
+
+    // Send password reset OTP
+    await createAndSendOtp(
+      user,
+      'PASSWORD_RESET'
+    );
+
+    return res.json({
+      message:
+        'If the email exists, an OTP has been sent.',
+    });
+
+  } catch (error) {
+    console.error(
+      'Vendor forgot password error:',
+      error
+    );
+
+    return res.status(500).json({
+      message: 'Something went wrong',
+    });
+  }
+}
+
+// =====================================================
+// VENDOR VERIFY RESET OTP
+// =====================================================
+
+async function vendorVerifyResetOtp(req, res) {
+  try {
+    const {
+      email,
+      otp,
+    } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({
+        message:
+          'Email and OTP are required',
+      });
+    }
+
+    // Find user
+    const user = await User.findOne({
+      where: { email },
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        message:
+          'Invalid or expired OTP',
+      });
+    }
+
+    // Verify vendor role
+    const vendorRole = await UserRole.findOne({
+      where: {
+        userId: user.id,
+      },
+      include: [
+        {
+          model: Role,
+          where: {
+            name: 'vendor',
+          },
+        },
+      ],
+    });
+
+    if (!vendorRole) {
+      return res.status(400).json({
+        message:
+          'Invalid or expired OTP',
+      });
+    }
+
+    // Verify OTP
+    const otpRecord =
+      await verifyOtpService(
+        user.id,
+        otp
+      );
+
+    if (!otpRecord) {
+      return res.status(400).json({
+        message:
+          'Invalid or expired OTP',
+      });
+    }
+
+    if (
+      otpRecord.type !==
+      'PASSWORD_RESET'
+    ) {
+      return res.status(400).json({
+        message:
+          'Invalid OTP type',
+      });
+    }
+
+    return res.json({
+      message:
+        'OTP verified successfully',
+
+      resetToken:
+        crypto
+          .randomBytes(32)
+          .toString('hex'),
+    });
+
+  } catch (error) {
+    console.error(
+      'Vendor verify reset OTP error:',
+      error
+    );
+
+    return res.status(500).json({
+      message:
+        'Something went wrong',
+    });
+  }
+}
+
+// =====================================================
+// VENDOR RESET PASSWORD
+// =====================================================
+
+async function vendorResetPassword(req, res) {
+  try {
+    const {
+      email,
+      newPassword,
+      confirmPassword,
+    } = req.body;
+
+    if (
+      !email ||
+      !newPassword ||
+      !confirmPassword
+    ) {
+      return res.status(400).json({
+        message:
+          'Email, new password and confirm password are required',
+      });
+    }
+
+    if (
+      newPassword !== confirmPassword
+    ) {
+      return res.status(400).json({
+        message:
+          'Password and confirm password do not match',
+      });
+    }
+
+    const user = await User.findOne({
+      where: { email },
+    });
+
+    if (!user) {
+      return res.status(400).json({
+        message:
+          'Unable to reset password',
+      });
+    }
+
+    // Verify vendor
+    const vendorRole = await UserRole.findOne({
+      where: {
+        userId: user.id,
+      },
+      include: [
+        {
+          model: Role,
+          where: {
+            name: 'vendor',
+          },
+        },
+      ],
+    });
+
+    if (!vendorRole) {
+      return res.status(400).json({
+        message:
+          'Unable to reset password',
+      });
+    }
+
+    // Hash new password
+    user.password =
+      await bcrypt.hash(
+        newPassword,
+        12
+      );
+
+    await user.save();
+
+    return res.json({
+      message:
+        'Vendor password reset successfully',
+    });
+
+  } catch (error) {
+    console.error(
+      'Vendor reset password error:',
+      error
+    );
+
+    return res.status(500).json({
+      message:
+        'Something went wrong',
+    });
+  }
+}
+
 module.exports = {
   vendorLogin,
   updateVendorAddress,
+  vendorVerifyResetOtp,
+  vendorResetPassword,
+vendorForgotPassword,
 };
