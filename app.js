@@ -1,11 +1,11 @@
 require('dotenv').config();
+const path = require('path')
 
 const express =require('express');
 
 const authRoutes =require('./routes/authRoute.js');
-
-
-const vendorAuthRoutes =require('./routes/vendorAuthRoutes');
+const vendorAuthRoutes =require('./routes/vendorAuthRoutes.js');
+const loyaltyRoutes =require('./routes/loyaltyRoutes.js');
 
 
 const app =express();
@@ -18,6 +18,17 @@ app.use(
   express.urlencoded({
     extended: true,
   })
+);
+
+ //multer configuration for file uploads
+app.use(
+  '/uploads',
+  express.static(
+    path.join(
+      __dirname,
+      'uploads'
+    )
+  )
 );
 
 app.get(
@@ -35,5 +46,6 @@ app.use('/api/user/auth/',authRoutes);
 
 //vendor routes
 app.use('/api/vendor/auth',vendorAuthRoutes);
+app.use('/api/vendor/loyalty-create',loyaltyRoutes);
 
 module.exports = app;

@@ -16,6 +16,12 @@ const VendorProfile = require('./vendorProfile')(
   DataTypes
 );
 
+const LoyaltyProgram =
+  require('./loyaltyProgram')(
+    sequelize,
+    DataTypes
+  );
+
 User.hasMany(Otp, {
   foreignKey: 'userId',
 });
@@ -50,6 +56,18 @@ VendorProfile.belongsTo(User, {
   as: 'user',
 });
 
+// User ↔ LoyaltyProgram
+
+User.hasMany(LoyaltyProgram, {
+  foreignKey: 'vendorId',
+  as: 'loyaltyPrograms',
+});
+
+LoyaltyProgram.belongsTo(User, {
+  foreignKey: 'vendorId',
+  as: 'vendor',
+});
+
 
 UserRole.belongsTo(Role, {
   foreignKey: 'roleId',
@@ -75,4 +93,5 @@ module.exports = {
   Role,
   UserRole,
   VendorProfile,
+  LoyaltyProgram,
 };
