@@ -16,7 +16,7 @@ async function createLoyaltyProgram(req, res) {
       qrCodeScanIntervalUnit,
       programRules,
       enablePinVerification,
-    } = req.body;
+    } = req.body || {};
 
     // Vendor ID comes from JWT
     const vendorId = req.user.id;
@@ -214,7 +214,98 @@ async function createLoyaltyProgram(req, res) {
   }
 }
 
+// =====================================================
+// GET 5 RECENT LOYALTY PROGRAMS
+// =====================================================
+
+async function getRecentLoyaltyPrograms(req, res) {
+  try {
+    // Get vendor from JWT
+    const vendorId = req.user.id;
+
+    const loyaltyPrograms =
+      await LoyaltyProgram.findAll({
+        where: {
+          vendorId,
+        },
+
+        order: [
+          ['createdAt', 'DESC'],
+        ],
+
+        limit: 5,
+      });
+
+    return res.status(200).json({
+      message:
+        'Recent loyalty programs fetched successfully',
+
+      count:
+        loyaltyPrograms.length,
+
+      loyaltyPrograms,
+    });
+
+  } catch (error) {
+    console.error(
+      'Get recent loyalty programs error:',
+      error
+    );
+
+    return res.status(500).json({
+      message:
+        'Something went wrong',
+    });
+  }
+}
+
+
+// =====================================================
+// GET ALL LOYALTY PROGRAMS
+// =====================================================
+
+async function getAllLoyaltyPrograms(req, res) {
+  try {
+    // Get vendor from JWT
+    const vendorId = req.user.id;
+
+    const loyaltyPrograms =
+      await LoyaltyProgram.findAll({
+        where: {
+          vendorId,
+        },
+
+        order: [
+          ['createdAt', 'DESC'],
+        ],
+      });
+
+    return res.status(200).json({
+      message:
+        'Loyalty programs fetched successfully',
+
+      count:
+        loyaltyPrograms.length,
+
+      loyaltyPrograms,
+    });
+
+  } catch (error) {
+    console.error(
+      'Get all loyalty programs error:',
+      error
+    );
+
+    return res.status(500).json({
+      message:
+        'Something went wrong',
+    });
+  }
+}
+
 
 module.exports = {
   createLoyaltyProgram,
+  getRecentLoyaltyPrograms,
+  getAllLoyaltyPrograms,
 };

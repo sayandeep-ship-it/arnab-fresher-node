@@ -42,10 +42,8 @@ app.get(
 );
 //user routes
 app.use('/api/user/auth/',authRoutes);
-
-
 //vendor routes
 app.use('/api/vendor/auth',vendorAuthRoutes);
-app.use('/api/vendor/loyalty-create',loyaltyRoutes);
+app.use('/api/vendor/loyalty',loyaltyRoutes);
 
 module.exports = app;
