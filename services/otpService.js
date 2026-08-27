@@ -4,42 +4,55 @@ const {
   Otp,
 } = require('../models');
 
-const generateOtp = require('../utils/generateOtp.js');
+const generateOtp =
+  require('../utils/generateOtp.js');
 
 const {
   sendOtpEmail,
 } = require('./emailService.js');
 
+
+const OTP_EXPIRES_MINUTES =
+  Number(
+    process.env.OTP_EXPIRES_MINUTES || 10
+  );
+
+
+// =====================================================
+// CREATE AND SEND OTP
+// =====================================================
+
 async function createAndSendOtp(
   user,
   type
 ) {
-  const otp = generateOtp();
+  const otp =
+    generateOtp();
 
-  const expiresAt = new Date(
-    Date.now() +
-      Number(
-        process.env.OTP_EXPIRES_MINUTES || 10                       //10 minutes
-      ) *
-        60 *
-        1000
-  );
+  const expiresAt =
+    new Date(
+      Date.now() +
+        OTP_EXPIRES_MINUTES *
+          60 *
+          1000
+    );
 
-  // Invalidate previous OTPs
+
+  // Invalidate all previous active OTPs
   await Otp.update(
     {
       verifiedAt: new Date(),
     },
-
     {
       where: {
         userId: user.id,
-        type,
         verifiedAt: null,
       },
     }
   );
 
+
+  // Create new OTP
   await Otp.create({
     userId: user.id,
     otp,
@@ -47,6 +60,8 @@ async function createAndSendOtp(
     expiresAt,
   });
 
+
+  // Send OTP email
   await sendOtpEmail(
     user.email,
     otp,
@@ -54,23 +69,69 @@ async function createAndSendOtp(
   );
 }
 
+
+// =====================================================
+// VERIFY OTP
+// =====================================================
+
 async function verifyOtp(
   userId,
-  otp,
-  type
+  otp
 ) {
   const otpRecord =
     await Otp.findOne({
       where: {
         userId,
         otp,
-        type,
 
+        // OTP must not already be used
         verifiedAt: null,
 
+        // OTP must not be expired
         expiresAt: {
           [Op.gt]: new Date(),
         },
+      },
+
+      // Always use newest OTP
+      order: [
+        ['createdAt', 'DESC'],
+      ],
+    });
+
+
+  // Invalid or expired OTP
+  if (!otpRecord) {
+    return null;
+  }
+
+
+  // Mark OTP as used
+  otpRecord.verifiedAt =
+    new Date();
+
+  await otpRecord.save();
+
+
+  // Return complete OTP record
+  // Controller can check:
+  // otpRecord.type
+  return otpRecord;
+}
+
+
+// =====================================================
+// RESEND OTP
+// =====================================================
+
+async function resendOtp(
+  user
+) {
+  // Find the latest OTP
+  const latestOtp =
+    await Otp.findOne({
+      where: {
+        userId: user.id,
       },
 
       order: [
@@ -78,19 +139,97 @@ async function verifyOtp(
       ],
     });
 
-  if (!otpRecord) {
-    return false;
+
+  // No previous OTP request
+  if (!latestOtp) {
+    return null;
   }
 
-  otpRecord.verifiedAt =
+
+  // =================================================
+  // CHECK IF OTP IS ALREADY ACTIVE
+  // =================================================
+
+  const now =
     new Date();
 
-  await otpRecord.save();
+  const otpStillValid =
+    latestOtp.expiresAt &&
+    latestOtp.expiresAt > now &&
+    !latestOtp.verifiedAt;
 
-  return true;
+
+  if (otpStillValid) {
+    return {
+      success: false,
+      reason: 'OTP_NOT_EXPIRED',
+    };
+  }
+
+
+  // =================================================
+  // GENERATE NEW OTP
+  // =================================================
+
+  const otp =
+    generateOtp();
+
+
+  const expiresAt =
+    new Date(
+      Date.now() +
+        OTP_EXPIRES_MINUTES *
+          60 *
+          1000
+    );
+
+
+  // =================================================
+  // CREATE NEW OTP
+  // =================================================
+
+  await Otp.create({
+    userId: user.id,
+
+    otp,
+
+    // IMPORTANT:
+    // Keep the same OTP type
+    // EMAIL_VERIFICATION
+    // or
+    // PASSWORD_RESET
+    type: latestOtp.type,
+
+    expiresAt,
+
+    verifiedAt: null,
+  });
+
+
+  // =================================================
+  // SEND NEW OTP
+  // =================================================
+
+  await sendOtpEmail(
+    user.email,
+    otp,
+    latestOtp.type
+  );
+
+
+  return {
+    success: true,
+    type: latestOtp.type,
+  };
 }
+
+
+// =====================================================
+// EXPORT
+// =====================================================
 
 module.exports = {
   createAndSendOtp,
   verifyOtp,
+  resendOtp,
 };

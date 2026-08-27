@@ -1,29 +1,66 @@
-const express =
-  require('express');
+const express = require('express');
 
 const {
   register,
-  verifyEmail,
+  verifyOtp,
+  resendOtp,
   login,
   forgotPassword,
-  verifyResetOtp,
   resetPassword,
-} = require(
-  '../controllers/authController.js'
-);
+} = require('../controllers/authController.js');
 
 const router = express.Router();
 
-router.post('/register',register);
 
-router.post('/verify-email',verifyEmail);
+//...........................
+//User Authentication Routes
+//...........................
 
-router.post('/login',login); // Login route
+// Register
+router.post(
+  '/user/register',
+  register
+);
 
-router.post('/forgot-password',forgotPassword);
 
-router.post('/verify-reset-otp',verifyResetOtp);
+// Generic OTP verification
+// Works for email verification
+// and password reset
+router.post(
+  '/user/verify-otp',
+  verifyOtp
+);
 
-router.post('/reset-password',resetPassword);
+
+
+// Resend OTP
+// Works for email verification
+// and password reset
+router.post(
+  '/user/resend-otp',
+  resendOtp
+);
+
+
+// Login
+router.post(
+  '/user/login',
+  login
+);
+
+
+// Forgot password
+router.post(
+  '/user/forgot-password',
+  forgotPassword
+);
+
+
+// Reset password
+router.post(
+  '/user/reset-password',
+  resetPassword
+);
+
 
 module.exports = router;
