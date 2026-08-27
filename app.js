@@ -4,6 +4,10 @@ const express =require('express');
 
 const authRoutes =require('./routes/authRoute.js');
 
+
+const vendorAuthRoutes =require('./routes/vendorAuthRoutes');
+
+
 const app =express();
 
 app.use(
@@ -25,10 +29,11 @@ app.get(
     });
   }
 );
+//user routes
+app.use('/api/user/auth/',authRoutes);
 
-app.use(
-  '/api/auth/v1',
-  authRoutes
-);
+
+//vendor routes
+app.use('/api/vendor/auth',vendorAuthRoutes);
 
 module.exports = app;

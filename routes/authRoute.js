@@ -18,7 +18,7 @@ const router = express.Router();
 
 // Register
 router.post(
-  '/user/register',
+  '/register',
   register
 );
 
@@ -27,7 +27,7 @@ router.post(
 // Works for email verification
 // and password reset
 router.post(
-  '/user/verify-otp',
+  '/verify-otp',
   verifyOtp
 );
 
@@ -37,28 +37,28 @@ router.post(
 // Works for email verification
 // and password reset
 router.post(
-  '/user/resend-otp',
+  '/resend-otp',
   resendOtp
 );
 
 
 // Login
 router.post(
-  '/user/login',
+  '/login',
   login
 );
 
 
 // Forgot password
 router.post(
-  '/user/forgot-password',
+  '/forgot-password',
   forgotPassword
 );
 
 
 // Reset password
 router.post(
-  '/user/reset-password',
+  '/reset-password',
   resetPassword
 );
 
