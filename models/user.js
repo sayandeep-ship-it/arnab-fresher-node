@@ -48,4 +48,13 @@ const User = sequelize.define(
   }
 );
 
+User.associate = (models) => {
+  User.belongsToMany(models.Role, {
+    through: models.UserRole,
+    foreignKey: 'userId',
+    otherKey: 'roleId',
+    as: 'roles',
+  });
+};
+
 module.exports = User;
