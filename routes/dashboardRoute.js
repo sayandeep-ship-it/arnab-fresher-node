@@ -1,28 +1,25 @@
 const express = require('express');
 
 const {
-  createLoyaltyProgram,
+  getLoyaltyPrograms,
 } = require('../controllers/loyaltyController.js');
 
 const authMiddleware = require('../middlewares/authMiddleware.js');
 
 const roleMiddleware = require('../middlewares/roleMiddleware.js');
 
-const upload = require('../middlewares/uploadMiddleware.js');
 
 const router = express.Router();
 
-
 // =====================================================
-// CREATE LOYALTY PROGRAM
+// RECENT 5 LOYALTY PROGRAMS
 // =====================================================
 
-router.post(
-  '/create',
+router.get(
+  '/',
   authMiddleware,
   roleMiddleware('vendor'),
-  upload.single('image'),
-  createLoyaltyProgram
+  getLoyaltyPrograms
 );
 
 module.exports = router;

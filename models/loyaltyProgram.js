@@ -49,9 +49,23 @@ module.exports = (sequelize, DataTypes) => {
           allowNull: false,
           defaultValue: false,
         },
+
+        // =============================================
+        // STATUS
+        // =============================================
+
+        status: {
+          type: DataTypes.ENUM(
+            'active',
+            'inactive'
+          ),
+          allowNull: false,
+          defaultValue: 'active',
+        },
       },
       {
         tableName: 'LoyaltyPrograms',
+        timestamps: true,
       }
     );
 

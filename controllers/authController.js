@@ -1,7 +1,12 @@
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 
-const { User } = require('../models');
+
+const {
+  User,
+  Role,
+  VendorProfile,
+} = require('../models');
 
 const {
   createAndSendOtp,
@@ -654,6 +659,401 @@ async function getMe(req, res) {
   }
 }
 
+// =====================================================
+// GET USER PROFILE
+// =====================================================
+
+async function getUserProfile(req, res) {
+  try {
+    // User ID comes from JWT
+    const userId = req.user.id;
+
+    const user = await User.findByPk(userId, {
+      attributes: [
+        'id',
+        'firstName',
+        'lastName',
+        'email',
+        'phone',
+        'profilePicture',
+        'isActive',
+        'emailVerifiedAt',
+        'createdAt',
+        'updatedAt',
+      ],
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        message: 'User not found',
+      });
+    }
+
+    return res.status(200).json({
+      message: 'User profile fetched successfully',
+
+      user: {
+        id: user.id,
+
+        firstName:
+          user.firstName,
+
+        lastName:
+          user.lastName,
+
+        email:
+          user.email,
+
+        phone:
+          user.phone,
+
+        profilePicture:
+          user.profilePicture,
+
+        isActive:
+          user.isActive,
+
+        emailVerifiedAt:
+          user.emailVerifiedAt,
+
+        createdAt:
+          user.createdAt,
+
+        updatedAt:
+          user.updatedAt,
+      },
+    });
+
+  } catch (error) {
+    console.error(
+      'Get user profile error:',
+      error
+    );
+
+    return res.status(500).json({
+      message:
+        'Something went wrong',
+    });
+  }
+}
+
+
+// =====================================================
+// UPDATE USER PROFILE
+// =====================================================
+
+async function updateUserProfile(req, res) {
+  try {
+    // User ID comes from JWT
+    const userId = req.user.id;
+
+    const {
+      firstName,
+      lastName,
+      email,
+      phone,
+    } = req.body || {};
+
+    // =================================================
+    // FIND USER
+    // =================================================
+
+    const user =
+      await User.findByPk(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        message:
+          'User not found',
+      });
+    }
+
+    // =================================================
+    // VALIDATION
+    // =================================================
+
+    if (
+      firstName !== undefined &&
+      !String(firstName).trim()
+    ) {
+      return res.status(400).json({
+        message:
+          'First name cannot be empty',
+      });
+    }
+
+    if (
+      email !== undefined &&
+      !String(email).trim()
+    ) {
+      return res.status(400).json({
+        message:
+          'Email cannot be empty',
+      });
+    }
+
+    // =================================================
+    // EMAIL UPDATE
+    // =================================================
+
+    if (
+      email !== undefined &&
+      email.trim() !== user.email
+    ) {
+      const existingUser =
+        await User.findOne({
+          where: {
+            email: email.trim(),
+          },
+        });
+
+      if (
+        existingUser &&
+        existingUser.id !== user.id
+      ) {
+        return res.status(409).json({
+          message:
+            'Email is already registered',
+        });
+      }
+
+      user.email =
+        email.trim();
+    }
+
+    // =================================================
+    // NAME
+    // =================================================
+
+    if (firstName !== undefined) {
+      user.firstName =
+        firstName.trim();
+    }
+
+    if (lastName !== undefined) {
+      user.lastName =
+        lastName
+          ? lastName.trim()
+          : null;
+    }
+
+    // =================================================
+    // PHONE
+    // =================================================
+
+    if (phone !== undefined) {
+      user.phone =
+        phone
+          ? String(phone).trim()
+          : null;
+    }
+
+    // =================================================
+    // PROFILE PICTURE
+    // =================================================
+
+    if (req.file) {
+      user.profilePicture =
+        `/uploads/users/${req.file.filename}`;
+    }
+
+    // =================================================
+    // SAVE
+    // =================================================
+
+    await user.save();
+
+    return res.status(200).json({
+      message:
+        'User profile updated successfully',
+
+      user: {
+        id:
+          user.id,
+
+        firstName:
+          user.firstName,
+
+        lastName:
+          user.lastName,
+
+        email:
+          user.email,
+
+        phone:
+          user.phone,
+
+        profilePicture:
+          user.profilePicture,
+
+        isActive:
+          user.isActive,
+
+        emailVerifiedAt:
+          user.emailVerifiedAt,
+      },
+    });
+
+  } catch (error) {
+    console.error(
+      'Update user profile error:',
+      error
+    );
+
+    // Handle Sequelize unique constraint
+    if (
+      error.name ===
+      'SequelizeUniqueConstraintError'
+    ) {
+      return res.status(409).json({
+        message:
+          'Email is already registered',
+      });
+    }
+
+    return res.status(500).json({
+      message:
+        'Something went wrong',
+    });
+  }
+}
+
+
+// =====================================================
+// CHANGE USER PASSWORD
+// =====================================================
+
+async function changeUserPassword(req, res) {
+  try {
+    // User ID comes from JWT
+    const userId = req.user.id;
+
+    const {
+      currentPassword,
+      newPassword,
+      confirmPassword,
+    } = req.body || {};
+
+    // =================================================
+    // VALIDATION
+    // =================================================
+
+    if (
+      !currentPassword ||
+      !newPassword ||
+      !confirmPassword
+    ) {
+      return res.status(400).json({
+        message:
+          'Current password, new password and confirm password are required',
+      });
+    }
+
+    // =================================================
+    // CONFIRM PASSWORD
+    // =================================================
+
+    if (
+      newPassword !==
+      confirmPassword
+    ) {
+      return res.status(400).json({
+        message:
+          'New password and confirm password do not match',
+      });
+    }
+
+    // =================================================
+    // PASSWORD LENGTH
+    // =================================================
+
+    if (
+      newPassword.length < 8
+    ) {
+      return res.status(400).json({
+        message:
+          'New password must be at least 8 characters long',
+      });
+    }
+
+    // =================================================
+    // FIND USER
+    // =================================================
+
+    const user =
+      await User.findByPk(userId);
+
+    if (!user) {
+      return res.status(404).json({
+        message:
+          'User not found',
+      });
+    }
+
+    // =================================================
+    // CHECK CURRENT PASSWORD
+    // =================================================
+
+    const passwordMatch =
+      await bcrypt.compare(
+        currentPassword,
+        user.password
+      );
+
+    if (!passwordMatch) {
+      return res.status(401).json({
+        message:
+          'Current password is incorrect',
+      });
+    }
+
+    // =================================================
+    // PREVENT SAME PASSWORD
+    // =================================================
+
+    const samePassword =
+      await bcrypt.compare(
+        newPassword,
+        user.password
+      );
+
+    if (samePassword) {
+      return res.status(400).json({
+        message:
+          'New password must be different from current password',
+      });
+    }
+
+    // =================================================
+    // HASH NEW PASSWORD
+    // =================================================
+
+    user.password =
+      await bcrypt.hash(
+        newPassword,
+        12
+      );
+
+    await user.save();
+
+    return res.status(200).json({
+      message:
+        'Password changed successfully',
+    });
+
+  } catch (error) {
+    console.error(
+      'Change user password error:',
+      error
+    );
+
+    return res.status(500).json({
+      message:
+        'Something went wrong',
+    });
+  }
+}
+
 
 // =====================================================
 // EXPORTS
@@ -667,4 +1067,7 @@ module.exports = {
   forgotPassword,
   resetPassword,
   getMe,
+  getUserProfile,
+  updateUserProfile,
+  changeUserPassword,
 };

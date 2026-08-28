@@ -6,6 +6,8 @@ const express =require('express');
 const authRoutes =require('./routes/authRoute.js');
 const vendorAuthRoutes =require('./routes/vendorAuthRoutes.js');
 const loyaltyRoutes =require('./routes/loyaltyRoutes.js');
+const dashboardRoutes =require('./routes/dashboardRoute.js');
+const vendorProfileRoutes = require('./routes/vendorProfileRoutes');
 
 const meRoutes = require('./routes/meRoutes');
 
@@ -50,5 +52,7 @@ app.use('/api/user/auth/',authRoutes);
 //vendor routes
 app.use('/api/vendor/auth',vendorAuthRoutes);
 app.use('/api/vendor/loyalty',loyaltyRoutes);
+app.use('/api/vendor/dashboard',dashboardRoutes);
+app.use('/api/vendor/profile',vendorProfileRoutes);
 
 module.exports = app;

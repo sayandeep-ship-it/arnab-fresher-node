@@ -7,7 +7,17 @@ const {
   login,
   forgotPassword,
   resetPassword,
+  getUserProfile,
+  updateUserProfile,
+  changeUserPassword,
 } = require('../controllers/authController.js');
+
+const authMiddleware = require('../middlewares/authMiddleware.js');
+
+const {getStores,getStoreDetails,getLoyaltyProgramDetails} = require('../controllers/storeController');
+
+const upload =require('../middlewares/uploadMiddleware');
+
 
 const router = express.Router();
 
@@ -62,5 +72,46 @@ router.post(
   resetPassword
 );
 
+router.get(
+  '/profile',
+  authMiddleware,
+  getUserProfile
+);
+
+// Update profile
+router.put(
+  '/profile',
+  authMiddleware,
+  upload.single('profilePicture'),
+  updateUserProfile
+);
+
+// Change password
+router.put(
+  '/profile/password',
+  authMiddleware,
+  changeUserPassword
+);
+
+router.get(
+  '/stores',
+  authMiddleware,
+  getStores
+);
+
+router.get(
+  '/stores/:vendorId',
+  authMiddleware,
+  getStoreDetails
+);
+// =====================================================
+// LOYALTY PROGRAM DETAILS
+// =====================================================
+
+router.get(
+  '/loyalty-programs/:loyaltyProgramId',
+  authMiddleware,
+  getLoyaltyProgramDetails
+);
 
 module.exports = router;
