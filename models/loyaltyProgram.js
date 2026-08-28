@@ -31,12 +31,12 @@ module.exports = (sequelize, DataTypes) => {
 
         qrCodeScanIntervalValue: {
           type: DataTypes.INTEGER,
-          allowNull: false,
+          allowNull: true,
         },
 
         qrCodeScanIntervalUnit: {
           type: DataTypes.STRING,
-          allowNull: false,
+          allowNull: true,
         },
 
         programRules: {

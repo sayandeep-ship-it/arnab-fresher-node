@@ -7,6 +7,8 @@ const authRoutes =require('./routes/authRoute.js');
 const vendorAuthRoutes =require('./routes/vendorAuthRoutes.js');
 const loyaltyRoutes =require('./routes/loyaltyRoutes.js');
 
+const meRoutes = require('./routes/meRoutes');
+
 
 const app =express();
 
@@ -40,6 +42,9 @@ app.get(
     });
   }
 );
+
+app.use('/api/auth',meRoutes);
+
 //user routes
 app.use('/api/user/auth/',authRoutes);
 //vendor routes

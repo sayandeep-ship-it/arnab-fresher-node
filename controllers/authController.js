@@ -569,6 +569,91 @@ async function resetPassword(
   }
 }
 
+// =====================================================
+// GET LOGGED-IN USER
+// =====================================================
+
+async function getMe(req, res) {
+  try {
+    // User ID comes from JWT
+    const userId = req.user.id;
+
+    const user =
+      await User.findByPk(userId, {
+        attributes: [
+          'id',
+          'firstName',
+          'lastName',
+          'email',
+          'isActive',
+          'emailVerifiedAt',
+          'createdAt',
+          'updatedAt',
+        ],
+
+        include: [
+          {
+            model: Role,
+            as: 'roles',
+
+            attributes: [
+              'id',
+              'name',
+            ],
+
+            through: {
+              attributes: [],
+            },
+          },
+
+          {
+            model: VendorProfile,
+            as: 'vendorProfile',
+
+            required: false,
+
+            attributes: [
+              'id',
+              'userId',
+              'streetAddress',
+              'city',
+              'country',
+              'state',
+              'pincode',
+              'isAddress',
+            ],
+          },
+        ],
+      });
+
+    // User no longer exists
+    if (!user) {
+      return res.status(404).json({
+        message:
+          'User not found',
+      });
+    }
+
+    return res.status(200).json({
+      message:
+        'User details fetched successfully',
+
+      user,
+    });
+
+  } catch (error) {
+    console.error(
+      'Get me error:',
+      error
+    );
+
+    return res.status(500).json({
+      message:
+        'Something went wrong',
+    });
+  }
+}
+
 
 // =====================================================
 // EXPORTS
@@ -581,4 +666,5 @@ module.exports = {
   login,
   forgotPassword,
   resetPassword,
+  getMe,
 };

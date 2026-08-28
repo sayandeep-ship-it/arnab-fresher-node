@@ -2,21 +2,16 @@ const express = require('express');
 
 const {
   createLoyaltyProgram,
-  getRecentLoyaltyPrograms,
-  getAllLoyaltyPrograms,
+  getLoyaltyPrograms,
 } = require('../controllers/loyaltyController.js');
 
-const authMiddleware =
-  require('../middlewares/authMiddleware.js');
+const authMiddleware = require('../middlewares/authMiddleware.js');
 
-const roleMiddleware =
-  require('../middlewares/roleMiddleware.js');
+const roleMiddleware = require('../middlewares/roleMiddleware.js');
 
-const upload =
-  require('../middlewares/uploadMiddleware.js');
+const upload = require('../middlewares/uploadMiddleware.js');
 
-const router =
-  express.Router();
+const router = express.Router();
 
 
 // =====================================================
@@ -36,22 +31,10 @@ router.post(
 // =====================================================
 
 router.get(
-  '/recent',
+  '/',
   authMiddleware,
   roleMiddleware('vendor'),
-  getRecentLoyaltyPrograms
-);
-
-
-// =====================================================
-// ALL LOYALTY PROGRAMS
-// =====================================================
-
-router.get(
-  '/all',
-  authMiddleware,
-  roleMiddleware('vendor'),
-  getAllLoyaltyPrograms
+  getLoyaltyPrograms
 );
 
 module.exports = router;

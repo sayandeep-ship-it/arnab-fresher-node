@@ -1,6 +1,10 @@
+const {Op} = require('sequelize');
+
 const {
   LoyaltyProgram,
+ 
 } = require('../models');
+
 
 
 // =====================================================
@@ -22,14 +26,22 @@ async function createLoyaltyProgram(req, res) {
     const vendorId = req.user.id;
 
     // =================================================
-    // VALIDATION
+    // PROGRAM NAME VALIDATION
     // =================================================
 
-    if (!programName) {
+    if (
+      !programName ||
+      !programName.trim()
+    ) {
       return res.status(400).json({
-        message: 'Program name is required',
+        message:
+          'Program name is required',
       });
     }
+
+    // =================================================
+    // REQUIRED STAR COLLECTION VALIDATION
+    // =================================================
 
     if (
       requiredStarCollection === undefined ||
@@ -42,38 +54,11 @@ async function createLoyaltyProgram(req, res) {
       });
     }
 
-    if (
-      qrCodeScanIntervalValue === undefined ||
-      qrCodeScanIntervalValue === null ||
-      qrCodeScanIntervalValue === ''
-    ) {
-      return res.status(400).json({
-        message:
-          'QR code scan interval value is required',
-      });
-    }
-
-    if (!qrCodeScanIntervalUnit) {
-      return res.status(400).json({
-        message:
-          'QR code scan interval unit is required',
-      });
-    }
-
-    // =================================================
-    // NUMBER VALIDATION
-    // =================================================
-
     const starCollection =
       Number(requiredStarCollection);
 
-    const intervalValue =
-      Number(qrCodeScanIntervalValue);
-
     if (
-      !Number.isInteger(
-        starCollection
-      ) ||
+      !Number.isInteger(starCollection) ||
       starCollection <= 0
     ) {
       return res.status(400).json({
@@ -82,42 +67,81 @@ async function createLoyaltyProgram(req, res) {
       });
     }
 
+    // =================================================
+    // QR CODE SCAN INTERVAL
+    // OPTIONAL
+    // =================================================
+
+    let intervalValue = null;
+    let intervalUnit = null;
+
+    const hasIntervalValue =
+      qrCodeScanIntervalValue !== undefined &&
+      qrCodeScanIntervalValue !== null &&
+      qrCodeScanIntervalValue !== '';
+
+    const hasIntervalUnit =
+      qrCodeScanIntervalUnit !== undefined &&
+      qrCodeScanIntervalUnit !== null &&
+      qrCodeScanIntervalUnit !== '';
+
+    // If only one is provided, reject it
     if (
-      !Number.isInteger(
-        intervalValue
-      ) ||
-      intervalValue <= 0
+      hasIntervalValue !== hasIntervalUnit
     ) {
       return res.status(400).json({
         message:
-          'QR code scan interval value must be a positive integer',
+          'QR code scan interval value and unit must be provided together',
       });
     }
 
     // =================================================
-    // INTERVAL UNIT VALIDATION
+    // VALIDATE INTERVAL IF PROVIDED
     // =================================================
 
-    const allowedUnits = [
-      'MINUTES',
-      'HOURS',
-      'DAYS',
-    ];
-
-    const intervalUnit =
-      String(
-        qrCodeScanIntervalUnit
-      ).toUpperCase();
-
     if (
-      !allowedUnits.includes(
-        intervalUnit
-      )
+      hasIntervalValue &&
+      hasIntervalUnit
     ) {
-      return res.status(400).json({
-        message:
-          'QR code scan interval unit must be MINUTES, HOURS or DAYS',
-      });
+      intervalValue =
+        Number(qrCodeScanIntervalValue);
+
+      if (
+        !Number.isInteger(
+          intervalValue
+        ) ||
+        intervalValue <= 0
+      ) {
+        return res.status(400).json({
+          message:
+            'QR code scan interval value must be a positive integer',
+        });
+      }
+
+      const allowedUnits = [
+        'MINUTES',
+        'HOURS',
+        'DAYS',
+        'SECONDS',
+      ];
+
+      intervalUnit =
+        String(
+          qrCodeScanIntervalUnit
+        )
+          .trim()
+          .toUpperCase();
+
+      if (
+        !allowedUnits.includes(
+          intervalUnit
+        )
+      ) {
+        return res.status(400).json({
+          message:
+            'QR code scan interval unit must be MINUTES, HOURS or DAYS',
+        });
+      }
     }
 
     // =================================================
@@ -132,7 +156,32 @@ async function createLoyaltyProgram(req, res) {
     }
 
     // =================================================
-    // CREATE LOYALTY
+    // PROGRAM RULES
+    // =================================================
+
+    let rules = null;
+
+    if (
+      programRules !== undefined &&
+      programRules !== null &&
+      programRules !== ''
+    ) {
+      rules =
+        String(
+          programRules
+        ).trim();
+    }
+
+    // =================================================
+    // PIN VERIFICATION
+    // =================================================
+
+    const pinVerification =
+      enablePinVerification === true ||
+      enablePinVerification === 'true';
+
+    // =================================================
+    // CREATE LOYALTY PROGRAM
     // =================================================
 
     const loyaltyProgram =
@@ -155,14 +204,15 @@ async function createLoyaltyProgram(req, res) {
           intervalUnit,
 
         programRules:
-          programRules
-            ? programRules.trim()
-            : null,
+          rules,
 
         enablePinVerification:
-          enablePinVerification === true ||
-          enablePinVerification === 'true',
+          pinVerification,
       });
+
+    // =================================================
+    // RESPONSE
+    // =================================================
 
     return res.status(201).json({
       message:
@@ -198,6 +248,9 @@ async function createLoyaltyProgram(req, res) {
 
         createdAt:
           loyaltyProgram.createdAt,
+
+        updatedAt:
+          loyaltyProgram.updatedAt,
       },
     });
 
@@ -214,85 +267,143 @@ async function createLoyaltyProgram(req, res) {
   }
 }
 
-// =====================================================
-// GET 5 RECENT LOYALTY PROGRAMS
-// =====================================================
 
-async function getRecentLoyaltyPrograms(req, res) {
+
+// GET VENDOR LOYALTY PROGRAMS
+async function getLoyaltyPrograms(req, res) {
   try {
-    // Get vendor from JWT
+    const {
+      page = 1,
+      limit = 5,
+      search = '',
+    } = req.query;
+
+    // =================================================
+    // VENDOR ID FROM JWT
+    // =================================================
+
     const vendorId = req.user.id;
 
-    const loyaltyPrograms =
-      await LoyaltyProgram.findAll({
-        where: {
-          vendorId,
-        },
+    // =================================================
+    // PAGINATION VALIDATION
+    // =================================================
+
+    const pageNumber =
+      Number(page);
+
+    const limitNumber =
+      Number(limit);
+
+    if (
+      !Number.isInteger(pageNumber) ||
+      pageNumber < 1
+    ) {
+      return res.status(400).json({
+        message:
+          'Page must be a positive integer',
+      });
+    }
+
+    if (
+      !Number.isInteger(limitNumber) ||
+      limitNumber < 1 ||
+      limitNumber > 100
+    ) {
+      return res.status(400).json({
+        message:
+          'Limit must be between 1 and 100',
+      });
+    }
+
+    // Calculate offset
+    const offset =
+      (pageNumber - 1) *
+      limitNumber;
+
+    // =================================================
+    // SEARCH
+    // =================================================
+
+    const whereCondition = {
+      vendorId,
+    };
+
+    if (
+      search &&
+      search.trim()
+    ) {
+      whereCondition.programName = {
+        [Op.like]:
+          `%${search.trim()}%`,
+      };
+    }
+
+    // =================================================
+    // FETCH LOYALTY PROGRAMS
+    // =================================================
+
+    const {
+      count,
+      rows: loyaltyPrograms,
+    } =
+      await LoyaltyProgram.findAndCountAll({
+        where:
+          whereCondition,
 
         order: [
           ['createdAt', 'DESC'],
         ],
 
-        limit: 5,
+        limit:
+          limitNumber,
+
+        offset,
       });
 
-    return res.status(200).json({
-      message:
-        'Recent loyalty programs fetched successfully',
+    // =================================================
+    // PAGINATION
+    // =================================================
 
-      count:
-        loyaltyPrograms.length,
+    const totalPages =
+      Math.ceil(
+        count /
+        limitNumber
+      );
 
-      loyaltyPrograms,
-    });
-
-  } catch (error) {
-    console.error(
-      'Get recent loyalty programs error:',
-      error
-    );
-
-    return res.status(500).json({
-      message:
-        'Something went wrong',
-    });
-  }
-}
-
-
-// =====================================================
-// GET ALL LOYALTY PROGRAMS
-// =====================================================
-
-async function getAllLoyaltyPrograms(req, res) {
-  try {
-    // Get vendor from JWT
-    const vendorId = req.user.id;
-
-    const loyaltyPrograms =
-      await LoyaltyProgram.findAll({
-        where: {
-          vendorId,
-        },
-
-        order: [
-          ['createdAt', 'DESC'],
-        ],
-      });
+    // =================================================
+    // RESPONSE
+    // =================================================
 
     return res.status(200).json({
       message:
         'Loyalty programs fetched successfully',
 
-      count:
-        loyaltyPrograms.length,
+      data: loyaltyPrograms,
 
-      loyaltyPrograms,
+      pagination: {
+        currentPage:
+          pageNumber,
+
+        limit:
+          limitNumber,
+
+        totalItems:
+          count,
+
+        totalPages,
+
+        hasNextPage:
+          pageNumber <
+          totalPages,
+
+        hasPreviousPage:
+          pageNumber > 1,
+      },
     });
 
   } catch (error) {
     console.error(
-      'Get all loyalty programs error:',
+      'Get loyalty programs error:',
       error
     );
 
@@ -303,9 +414,7 @@ async function getAllLoyaltyPrograms(req, res) {
   }
 }
 
-
 module.exports = {
   createLoyaltyProgram,
-  getRecentLoyaltyPrograms,
-  getAllLoyaltyPrograms,
+  getLoyaltyPrograms,
 };
