@@ -13,6 +13,10 @@ const VendorProfile = require('./vendorProfile')(sequelize, DataTypes);
 
 const LoyaltyProgram = require('./loyaltyProgram')(sequelize, DataTypes);
 
+const LoyaltyScan = require('./loyaltyScan')(sequelize, DataTypes);
+
+const UserLoyaltyProgram = require('./userLoyaltyProgram')(sequelize, DataTypes);
+
 User.hasMany(Otp, {
   foreignKey: 'userId',
 });
@@ -71,6 +75,44 @@ LoyaltyProgram.belongsTo(User, {
   as: 'vendor',
 });
 
+User.hasMany(LoyaltyScan, {
+  foreignKey: 'userId',
+  as: 'loyaltyScans',
+});
+
+LoyaltyScan.belongsTo(User, {
+  foreignKey: 'userId',
+  as: 'user',
+});
+
+LoyaltyProgram.hasMany(LoyaltyScan, {
+  foreignKey: 'loyaltyProgramId',
+  as: 'loyaltyScans',
+});
+
+LoyaltyScan.belongsTo(LoyaltyProgram, {
+  foreignKey: 'loyaltyProgramId',
+  as: 'loyaltyProgram',
+});
+User.hasMany(UserLoyaltyProgram, {
+  foreignKey: 'userId',
+  as: 'userLoyaltyPrograms',
+});
+
+UserLoyaltyProgram.belongsTo(User, {
+  foreignKey: 'userId',
+  as: 'user',
+});
+LoyaltyProgram.hasMany(UserLoyaltyProgram, {
+  foreignKey: 'loyaltyProgramId',
+  as: 'customers',
+});
+
+UserLoyaltyProgram.belongsTo(LoyaltyProgram, {
+  foreignKey: 'loyaltyProgramId',
+  as: 'loyaltyProgram',
+});
+
 module.exports = {
   sequelize,
 
@@ -85,4 +127,8 @@ module.exports = {
   VendorProfile,
 
   LoyaltyProgram,
+
+  LoyaltyScan,
+
+  UserLoyaltyProgram,
 };

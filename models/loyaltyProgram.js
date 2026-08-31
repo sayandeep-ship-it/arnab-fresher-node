@@ -48,6 +48,17 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: false,
         defaultValue: false,
       },
+      qrCodeToken: {
+        type: DataTypes.UUID,
+        defaultValue: DataTypes.UUIDV4,
+        allowNull: false,
+        unique: true,
+      },
+
+      qrCodePath: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
 
       status: {
         type: DataTypes.ENUM('active', 'inactive'),

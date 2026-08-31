@@ -1,6 +1,6 @@
 const { Op } = require('sequelize');
 
-const { User, Role, VendorProfile, LoyaltyProgram } = require('../models');
+const { User, Role, VendorProfile, LoyaltyProgram, LoyaltyScan, UserLoyaltyProgram } = require('../models');
 
 async function getStores(req, res) {
   try {
@@ -406,8 +406,118 @@ async function getLoyaltyProgramDetails(req, res) {
   }
 }
 
+async function scanLoyaltyProgram(req, res) {
+  try {
+    const { qrCodeToken } = req.params;
+
+    // Customer ID comes from JWT
+    const userId = req.user.id;
+
+    if (!qrCodeToken) {
+      return res.status(400).json({
+        message: 'QR code token is required',
+      });
+    }
+
+    // Find active loyalty program
+    const loyaltyProgram = await LoyaltyProgram.findOne({
+      where: {
+        qrCodeToken,
+        status: 'active',
+      },
+    });
+
+    if (!loyaltyProgram) {
+      return res.status(404).json({
+        message: 'Loyalty program not found or inactive',
+      });
+    }
+
+    if (!loyaltyProgram.enablePinVerification) {
+      let userLoyaltyProgram = await UserLoyaltyProgram.findOne({
+        where: {
+          userId,
+          loyaltyProgramId: loyaltyProgram.id,
+        },
+      });
+
+      // Customer is not enrolled yet
+      if (!userLoyaltyProgram) {
+        userLoyaltyProgram = await UserLoyaltyProgram.create({
+          userId,
+          loyaltyProgramId: loyaltyProgram.id,
+          obtainedStars: 1,
+        });
+      } else {
+        // Customer already enrolled
+        userLoyaltyProgram.obtainedStars += 1;
+
+        await userLoyaltyProgram.save();
+      }
+
+      return res.status(200).json({
+        message: 'Star added successfully',
+
+        pinRequired: false,
+
+        starAdded: true,
+
+        obtainedStars: userLoyaltyProgram.obtainedStars,
+
+        requiredStars: loyaltyProgram.requiredStarCollection,
+
+        loyaltyProgram: {
+          id: loyaltyProgram.id,
+
+          programName: loyaltyProgram.programName,
+        },
+      });
+    }
+
+    const loyaltyScan = await LoyaltyScan.create({
+      loyaltyProgramId: loyaltyProgram.id,
+
+      userId,
+
+      pin: null,
+
+      pinGeneratedAt: null,
+
+      pinExpiresAt: null,
+
+      verifiedAt: null,
+
+      starAdded: false,
+    });
+
+    return res.status(200).json({
+      message: 'PIN verification required',
+
+      pinRequired: true,
+
+      starAdded: false,
+
+      scanId: loyaltyScan.id,
+
+      loyaltyProgram: {
+        id: loyaltyProgram.id,
+
+        programName: loyaltyProgram.programName,
+
+        requiredStarCollection: loyaltyProgram.requiredStarCollection,
+      },
+    });
+  } catch (error) {
+    console.error('Scan loyalty program error:', error);
+
+    return res.status(500).json({
+      message: 'Something went wrong',
+    });
+  }
+}
 module.exports = {
   getStores,
   getStoreDetails,
   getLoyaltyProgramDetails,
+  scanLoyaltyProgram,
 };

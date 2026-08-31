@@ -4,13 +4,8 @@ const path = require('path');
 const express = require('express');
 
 const authRoutes = require('./routes/authRoute.js');
-const vendorAuthRoutes = require('./routes/vendorAuthRoutes.js');
-const loyaltyRoutes = require('./routes/loyaltyRoutes.js');
-const dashboardRoutes = require('./routes/dashboardRoute.js');
-const vendorProfileRoutes = require('./routes/vendorProfileRoutes');
-
-const meRoutes = require('./routes/meRoutes');
-
+const userRoutes = require('./routes/userRoute.js');
+const vendorRoute = require('./routes/vendorRoute.js');
 const app = express();
 
 app.use(express.json());
@@ -30,14 +25,8 @@ app.get('/health', (req, res) => {
   });
 });
 
-app.use('/api/auth', meRoutes);
 
-//user routes
-app.use('/api/user/auth/', authRoutes);
-//vendor routes
-app.use('/api/vendor/auth', vendorAuthRoutes);
-app.use('/api/vendor/loyalty', loyaltyRoutes);
-app.use('/api/vendor/dashboard', dashboardRoutes);
-app.use('/api/vendor/profile', vendorProfileRoutes);
-
+app.use('/api/auth/', authRoutes);
+app.use('/api/user/', userRoutes);
+app.use('/api/vendor/', vendorRoute);
 module.exports = app;

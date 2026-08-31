@@ -12,42 +12,39 @@ const {
   changeUserPassword,
 } = require('../controllers/authController.js');
 
+const {
+  vendorLogin,
+  updateVendorAddress,
+  vendorForgotPassword,
+  vendorVerifyResetOtp,
+  vendorResetPassword,
+} = require('../controllers/authController.js');
+
 const authMiddleware = require('../middlewares/authMiddleware.js');
-
-const { getStores, getStoreDetails, getLoyaltyProgramDetails } = require('../controllers/storeController');
-
+const roleMiddleware = require('../middlewares/roleMiddleware');
 const upload = require('../middlewares/uploadMiddleware');
+const { getMe } = require('../controllers/authController.js');
 
 const router = express.Router();
 
+router.get('/me', authMiddleware, getMe);
+
+//user section..
 router.post('/register', register);
-
 router.post('/verify-otp', verifyOtp);
-
 router.post('/resend-otp', resendOtp);
-
-// Login
-router.post('/login', login);
-
-// Forgot password
+router.post('/user-login', login);
 router.post('/forgot-password', forgotPassword);
-
-// Reset password
 router.post('/reset-password', resetPassword);
-
 router.get('/profile', authMiddleware, getUserProfile);
-
-// Update profile
 router.put('/profile', authMiddleware, upload.single('profilePicture'), updateUserProfile);
-
-// Change password
 router.put('/profile/password', authMiddleware, changeUserPassword);
 
-router.get('/stores', authMiddleware, getStores);
-
-router.get('/stores/:vendorId', authMiddleware, getStoreDetails);
-
-//loyalty program details
-router.get('/loyalty-programs/:loyaltyProgramId', authMiddleware, getLoyaltyProgramDetails);
+//vendor section
+router.post('/vendor-login', vendorLogin);
+router.post('/vendor-forgot-password', vendorForgotPassword);
+router.post('/vendor-verify-reset-otp', vendorVerifyResetOtp);
+router.post('/vendor-reset-password', vendorResetPassword);
+router.put('/vendor-address', authMiddleware, roleMiddleware('vendor'), updateVendorAddress);
 
 module.exports = router;
