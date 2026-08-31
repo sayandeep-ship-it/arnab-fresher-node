@@ -1,7 +1,4 @@
-const {
-  UserRole,
-  Role,
-} = require('../models');
+const { UserRole, Role } = require('../models');
 
 const roleMiddleware = (requiredRole) => {
   return async (req, res, next) => {
@@ -12,20 +9,19 @@ const roleMiddleware = (requiredRole) => {
         });
       }
 
-      const userRole =
-        await UserRole.findOne({
-          where: {
-            userId: req.user.id,
-          },
-          include: [
-            {
-              model: Role,
-              where: {
-                name: requiredRole,
-              },
+      const userRole = await UserRole.findOne({
+        where: {
+          userId: req.user.id,
+        },
+        include: [
+          {
+            model: Role,
+            where: {
+              name: requiredRole,
             },
-          ],
-        });
+          },
+        ],
+      });
 
       if (!userRole) {
         return res.status(403).json({
@@ -34,12 +30,8 @@ const roleMiddleware = (requiredRole) => {
       }
 
       next();
-
     } catch (error) {
-      console.error(
-        'Role middleware error:',
-        error
-      );
+      console.error('Role middleware error:', error);
 
       return res.status(500).json({
         message: 'Something went wrong',

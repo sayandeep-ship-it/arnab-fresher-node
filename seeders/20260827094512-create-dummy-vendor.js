@@ -5,23 +5,18 @@ const bcrypt = require('bcryptjs');
 module.exports = {
   async up(queryInterface) {
     // 1. Find vendor role
-    const [roles] = await queryInterface.sequelize.query(
-      `SELECT id FROM Roles WHERE name = 'vendor' LIMIT 1;`
-    );
+    const [roles] = await queryInterface.sequelize.query(`SELECT id FROM Roles WHERE name = 'vendor' LIMIT 1;`);
 
     if (!roles.length) {
-      throw new Error(
-        'Vendor role not found. Run role seeder first.'
-      );
+      throw new Error('Vendor role not found. Run role seeder first.');
     }
 
     const vendorRoleId = roles[0].id;
 
     // 2. Check if vendor already exists
-    const [existingUsers] =
-      await queryInterface.sequelize.query(
-        `SELECT id FROM Users WHERE email = 'vendor@example.com' LIMIT 1;`
-      );
+    const [existingUsers] = await queryInterface.sequelize.query(
+      `SELECT id FROM Users WHERE email = 'vendor@example.com' LIMIT 1;`
+    );
 
     if (existingUsers.length) {
       console.log('Dummy vendor already exists.');
@@ -29,10 +24,7 @@ module.exports = {
     }
 
     // 3. Hash password
-    const hashedPassword = await bcrypt.hash(
-      'Vendor@123',
-      12
-    );
+    const hashedPassword = await bcrypt.hash('Vendor@123', 12);
 
     // 4. Create vendor user
     await queryInterface.bulkInsert('Users', [
@@ -48,10 +40,9 @@ module.exports = {
     ]);
 
     // 5. Get created vendor
-    const [users] =
-      await queryInterface.sequelize.query(
-        `SELECT id FROM Users WHERE email = 'vendor@example.com' LIMIT 1;`
-      );
+    const [users] = await queryInterface.sequelize.query(
+      `SELECT id FROM Users WHERE email = 'vendor@example.com' LIMIT 1;`
+    );
 
     const vendorUserId = users[0].id;
 
@@ -64,32 +55,28 @@ module.exports = {
     ]);
 
     // 7. Create vendor profile
-    await queryInterface.bulkInsert(
-      'VendorProfiles',
-      [
-        {
-          userId: vendorUserId,
+    await queryInterface.bulkInsert('VendorProfiles', [
+      {
+        userId: vendorUserId,
 
-          streetAddress: null,
-          city: null,
-          country: null,
-          state: null,
-          pincode: null,
+        streetAddress: null,
+        city: null,
+        country: null,
+        state: null,
+        pincode: null,
 
-          isAddress: false,
+        isAddress: false,
 
-          createdAt: new Date(),
-          updatedAt: new Date(),
-        },
-      ]
-    );
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      },
+    ]);
   },
 
   async down(queryInterface) {
-    const [users] =
-      await queryInterface.sequelize.query(
-        `SELECT id FROM Users WHERE email = 'vendor@example.com' LIMIT 1;`
-      );
+    const [users] = await queryInterface.sequelize.query(
+      `SELECT id FROM Users WHERE email = 'vendor@example.com' LIMIT 1;`
+    );
 
     if (!users.length) {
       return;
@@ -97,25 +84,16 @@ module.exports = {
 
     const vendorUserId = users[0].id;
 
-    await queryInterface.bulkDelete(
-      'VendorProfiles',
-      {
-        userId: vendorUserId,
-      }
-    );
+    await queryInterface.bulkDelete('VendorProfiles', {
+      userId: vendorUserId,
+    });
 
-    await queryInterface.bulkDelete(
-      'UserRoles',
-      {
-        userId: vendorUserId,
-      }
-    );
+    await queryInterface.bulkDelete('UserRoles', {
+      userId: vendorUserId,
+    });
 
-    await queryInterface.bulkDelete(
-      'Users',
-      {
-        id: vendorUserId,
-      }
-    );
+    await queryInterface.bulkDelete('Users', {
+      id: vendorUserId,
+    });
   },
 };

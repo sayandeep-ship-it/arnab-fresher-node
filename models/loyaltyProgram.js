@@ -1,73 +1,65 @@
 module.exports = (sequelize, DataTypes) => {
-  const LoyaltyProgram =
-    sequelize.define(
-      'LoyaltyProgram',
-      {
-        id: {
-          type: DataTypes.INTEGER,
-          primaryKey: true,
-          autoIncrement: true,
-        },
-
-        vendorId: {
-          type: DataTypes.INTEGER,
-          allowNull: false,
-        },
-
-        image: {
-          type: DataTypes.STRING,
-          allowNull: true,
-        },
-
-        programName: {
-          type: DataTypes.STRING,
-          allowNull: false,
-        },
-
-        requiredStarCollection: {
-          type: DataTypes.INTEGER,
-          allowNull: false,
-        },
-
-        qrCodeScanIntervalValue: {
-          type: DataTypes.INTEGER,
-          allowNull: true,
-        },
-
-        qrCodeScanIntervalUnit: {
-          type: DataTypes.STRING,
-          allowNull: true,
-        },
-
-        programRules: {
-          type: DataTypes.TEXT,
-          allowNull: true,
-        },
-
-        enablePinVerification: {
-          type: DataTypes.BOOLEAN,
-          allowNull: false,
-          defaultValue: false,
-        },
-
-        // =============================================
-        // STATUS
-        // =============================================
-
-        status: {
-          type: DataTypes.ENUM(
-            'active',
-            'inactive'
-          ),
-          allowNull: false,
-          defaultValue: 'active',
-        },
+  const LoyaltyProgram = sequelize.define(
+    'LoyaltyProgram',
+    {
+      id: {
+        type: DataTypes.INTEGER,
+        primaryKey: true,
+        autoIncrement: true,
       },
-      {
-        tableName: 'LoyaltyPrograms',
-        timestamps: true,
-      }
-    );
+
+      vendorId: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+      },
+
+      image: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+
+      programName: {
+        type: DataTypes.STRING,
+        allowNull: false,
+      },
+
+      requiredStarCollection: {
+        type: DataTypes.INTEGER,
+        allowNull: false,
+      },
+
+      qrCodeScanIntervalValue: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+      },
+
+      qrCodeScanIntervalUnit: {
+        type: DataTypes.STRING,
+        allowNull: true,
+      },
+
+      programRules: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+      },
+
+      enablePinVerification: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+      },
+
+      status: {
+        type: DataTypes.ENUM('active', 'inactive'),
+        allowNull: false,
+        defaultValue: 'active',
+      },
+    },
+    {
+      tableName: 'LoyaltyPrograms',
+      timestamps: true,
+    }
+  );
 
   return LoyaltyProgram;
 };

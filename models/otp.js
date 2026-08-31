@@ -21,10 +21,7 @@ const Otp = sequelize.define(
     },
 
     type: {
-      type: DataTypes.ENUM(
-        'EMAIL_VERIFICATION',
-        'PASSWORD_RESET'
-      ),
+      type: DataTypes.ENUM('EMAIL_VERIFICATION', 'PASSWORD_RESET'),
 
       allowNull: false,
     },

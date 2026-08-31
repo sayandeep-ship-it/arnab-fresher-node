@@ -14,104 +14,40 @@ const {
 
 const authMiddleware = require('../middlewares/authMiddleware.js');
 
-const {getStores,getStoreDetails,getLoyaltyProgramDetails} = require('../controllers/storeController');
+const { getStores, getStoreDetails, getLoyaltyProgramDetails } = require('../controllers/storeController');
 
-const upload =require('../middlewares/uploadMiddleware');
-
+const upload = require('../middlewares/uploadMiddleware');
 
 const router = express.Router();
 
+router.post('/register', register);
 
-//...........................
-//User Authentication Routes
-//...........................
+router.post('/verify-otp', verifyOtp);
 
-// Register
-router.post(
-  '/register',
-  register
-);
-
-
-// Generic OTP verification
-// Works for email verification
-// and password reset
-router.post(
-  '/verify-otp',
-  verifyOtp
-);
-
-
-
-// Resend OTP
-// Works for email verification
-// and password reset
-router.post(
-  '/resend-otp',
-  resendOtp
-);
-
+router.post('/resend-otp', resendOtp);
 
 // Login
-router.post(
-  '/login',
-  login
-);
-
+router.post('/login', login);
 
 // Forgot password
-router.post(
-  '/forgot-password',
-  forgotPassword
-);
-
+router.post('/forgot-password', forgotPassword);
 
 // Reset password
-router.post(
-  '/reset-password',
-  resetPassword
-);
+router.post('/reset-password', resetPassword);
 
-router.get(
-  '/profile',
-  authMiddleware,
-  getUserProfile
-);
+router.get('/profile', authMiddleware, getUserProfile);
 
 // Update profile
-router.put(
-  '/profile',
-  authMiddleware,
-  upload.single('profilePicture'),
-  updateUserProfile
-);
+router.put('/profile', authMiddleware, upload.single('profilePicture'), updateUserProfile);
 
 // Change password
-router.put(
-  '/profile/password',
-  authMiddleware,
-  changeUserPassword
-);
+router.put('/profile/password', authMiddleware, changeUserPassword);
 
-router.get(
-  '/stores',
-  authMiddleware,
-  getStores
-);
+router.get('/stores', authMiddleware, getStores);
 
-router.get(
-  '/stores/:vendorId',
-  authMiddleware,
-  getStoreDetails
-);
-// =====================================================
-// LOYALTY PROGRAM DETAILS
-// =====================================================
+router.get('/stores/:vendorId', authMiddleware, getStoreDetails);
 
-router.get(
-  '/loyalty-programs/:loyaltyProgramId',
-  authMiddleware,
-  getLoyaltyProgramDetails
-);
+//loyalty program details
+router.get('/loyalty-programs/:loyaltyProgramId', authMiddleware, getLoyaltyProgramDetails);
 
 module.exports = router;

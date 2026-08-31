@@ -11,11 +11,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-async function sendOtpEmail(
-  email,
-  otp,
-  type
-) {
+async function sendOtpEmail(email, otp, type) {
   let subject;
 
   if (type === 'EMAIL_VERIFICATION') {
@@ -32,9 +28,7 @@ async function sendOtpEmail(
     text: `
 Your OTP is: ${otp} for ${type === 'EMAIL_VERIFICATION' ? 'email verification' : 'password reset'}.
 
-This OTP will expire in ${
-      process.env.OTP_EXPIRES_MINUTES || 10
-    } minutes.
+This OTP will expire in ${process.env.OTP_EXPIRES_MINUTES || 10} minutes.
 
 If you did not request this, please ignore this email.
     `,

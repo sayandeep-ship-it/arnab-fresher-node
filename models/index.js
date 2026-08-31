@@ -1,40 +1,17 @@
 const sequelize = require('../config/database');
 const { DataTypes } = require('sequelize');
 
-
-// =====================================================
-// MODELS
-// =====================================================
-
 const User = require('./user');
 
 const Otp = require('./otp');
 
-const Role = require('./role')(
-  sequelize,
-  DataTypes
-);
+const Role = require('./role')(sequelize, DataTypes);
 
-const UserRole = require('./userRole')(
-  sequelize,
-  DataTypes
-);
+const UserRole = require('./userRole')(sequelize, DataTypes);
 
-const VendorProfile = require('./vendorProfile')(
-  sequelize,
-  DataTypes
-);
+const VendorProfile = require('./vendorProfile')(sequelize, DataTypes);
 
-const LoyaltyProgram =
-  require('./loyaltyProgram')(
-    sequelize,
-    DataTypes
-  );
-
-
-// =====================================================
-// USER ↔ OTP
-// =====================================================
+const LoyaltyProgram = require('./loyaltyProgram')(sequelize, DataTypes);
 
 User.hasMany(Otp, {
   foreignKey: 'userId',
@@ -43,11 +20,6 @@ User.hasMany(Otp, {
 Otp.belongsTo(User, {
   foreignKey: 'userId',
 });
-
-
-// =====================================================
-// USER ↔ ROLE
-// =====================================================
 
 User.belongsToMany(Role, {
   through: UserRole,
@@ -62,11 +34,6 @@ Role.belongsToMany(User, {
   otherKey: 'userId',
   as: 'users',
 });
-
-
-// =====================================================
-// USER ↔ USER ROLE
-// =====================================================
 
 User.hasMany(UserRole, {
   foreignKey: 'userId',
@@ -84,11 +51,6 @@ UserRole.belongsTo(Role, {
   foreignKey: 'roleId',
 });
 
-
-// =====================================================
-// USER ↔ VENDOR PROFILE
-// =====================================================
-
 User.hasOne(VendorProfile, {
   foreignKey: 'userId',
   as: 'vendorProfile',
@@ -99,11 +61,6 @@ VendorProfile.belongsTo(User, {
   as: 'user',
 });
 
-
-// =====================================================
-// VENDOR ↔ LOYALTY PROGRAM
-// =====================================================
-
 User.hasMany(LoyaltyProgram, {
   foreignKey: 'vendorId',
   as: 'loyaltyPrograms',
@@ -113,11 +70,6 @@ LoyaltyProgram.belongsTo(User, {
   foreignKey: 'vendorId',
   as: 'vendor',
 });
-
-
-// =====================================================
-// EXPORTS
-// =====================================================
 
 module.exports = {
   sequelize,

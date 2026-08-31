@@ -1,25 +1,13 @@
 const express = require('express');
 
-const {
-  getLoyaltyPrograms,
-} = require('../controllers/loyaltyController.js');
+const { getLoyaltyPrograms } = require('../controllers/loyaltyController.js');
 
 const authMiddleware = require('../middlewares/authMiddleware.js');
 
 const roleMiddleware = require('../middlewares/roleMiddleware.js');
 
-
 const router = express.Router();
 
-// =====================================================
-// RECENT 5 LOYALTY PROGRAMS
-// =====================================================
-
-router.get(
-  '/',
-  authMiddleware,
-  roleMiddleware('vendor'),
-  getLoyaltyPrograms
-);
+router.get('/', authMiddleware, roleMiddleware('vendor'), getLoyaltyPrograms);
 
 module.exports = router;
