@@ -5,8 +5,7 @@ const path = require('path');
 
 const bcrypt = require('bcryptjs');
 
-const { User, VendorProfile,LoyaltyProgram } = require('../models');
-
+const { User, VendorProfile, LoyaltyProgram , LoyaltyScan} = require('../models');
 
 async function getVendorProfile(req, res) {
   try {
@@ -291,11 +290,7 @@ async function createLoyaltyProgram(req, res) {
       });
     }
 
-    if (
-      requiredStarCollection === undefined ||
-      requiredStarCollection === null ||
-      requiredStarCollection === ''
-    ) {
+    if (requiredStarCollection === undefined || requiredStarCollection === null || requiredStarCollection === '') {
       return res.status(400).json({
         message: 'Required star collection is required',
       });
@@ -303,13 +298,9 @@ async function createLoyaltyProgram(req, res) {
 
     const starCollection = Number(requiredStarCollection);
 
-    if (
-      !Number.isInteger(starCollection) ||
-      starCollection <= 0
-    ) {
+    if (!Number.isInteger(starCollection) || starCollection <= 0) {
       return res.status(400).json({
-        message:
-          'Required star collection must be a positive integer',
+        message: 'Required star collection must be a positive integer',
       });
     }
 
@@ -317,50 +308,33 @@ async function createLoyaltyProgram(req, res) {
     let intervalUnit = null;
 
     const hasIntervalValue =
-      qrCodeScanIntervalValue !== undefined &&
-      qrCodeScanIntervalValue !== null &&
-      qrCodeScanIntervalValue !== '';
+      qrCodeScanIntervalValue !== undefined && qrCodeScanIntervalValue !== null && qrCodeScanIntervalValue !== '';
 
     const hasIntervalUnit =
-      qrCodeScanIntervalUnit !== undefined &&
-      qrCodeScanIntervalUnit !== null &&
-      qrCodeScanIntervalUnit !== '';
+      qrCodeScanIntervalUnit !== undefined && qrCodeScanIntervalUnit !== null && qrCodeScanIntervalUnit !== '';
 
     if (hasIntervalValue !== hasIntervalUnit) {
       return res.status(400).json({
-        message:
-          'QR code scan interval value and unit must be provided together',
+        message: 'QR code scan interval value and unit must be provided together',
       });
     }
 
     if (hasIntervalValue && hasIntervalUnit) {
       intervalValue = Number(qrCodeScanIntervalValue);
 
-      if (
-        !Number.isInteger(intervalValue) ||
-        intervalValue <= 0
-      ) {
+      if (!Number.isInteger(intervalValue) || intervalValue <= 0) {
         return res.status(400).json({
-          message:
-            'QR code scan interval value must be a positive integer',
+          message: 'QR code scan interval value must be a positive integer',
         });
       }
 
-      const allowedUnits = [
-        'MINUTES',
-        'HOURS',
-        'DAYS',
-        'SECONDS',
-      ];
+      const allowedUnits = ['MINUTES', 'HOURS', 'DAYS', 'SECONDS'];
 
-      intervalUnit = String(qrCodeScanIntervalUnit)
-        .trim()
-        .toUpperCase();
+      intervalUnit = String(qrCodeScanIntervalUnit).trim().toUpperCase();
 
       if (!allowedUnits.includes(intervalUnit)) {
         return res.status(400).json({
-          message:
-            'QR code scan interval unit must be MINUTES, HOURS, DAYS or SECONDS',
+          message: 'QR code scan interval unit must be MINUTES, HOURS, DAYS or SECONDS',
         });
       }
     }
@@ -373,17 +347,11 @@ async function createLoyaltyProgram(req, res) {
 
     let rules = null;
 
-    if (
-      programRules !== undefined &&
-      programRules !== null &&
-      programRules !== ''
-    ) {
+    if (programRules !== undefined && programRules !== null && programRules !== '') {
       rules = String(programRules).trim();
     }
 
-    const pinVerification =
-      enablePinVerification === true ||
-      enablePinVerification === 'true';
+    const pinVerification = enablePinVerification === true || enablePinVerification === 'true';
 
     // Create loyalty program
     const loyaltyProgram = await LoyaltyProgram.create({
@@ -397,20 +365,7 @@ async function createLoyaltyProgram(req, res) {
       enablePinVerification: pinVerification,
     });
 
-    /*
-     * QR CODE GENERATION
-     *
-     * qrCodeToken was automatically generated
-     * when the loyalty program was created.
-     */
-
-    const qrDirectory = path.join(
-      __dirname,
-      '..',
-      'uploads',
-      'loyalty',
-      'qr'
-    );
+    const qrDirectory = path.join(__dirname, '..', 'uploads', 'loyalty', 'qr');
 
     // Create QR directory if it doesn't exist
     if (!fs.existsSync(qrDirectory)) {
@@ -420,34 +375,24 @@ async function createLoyaltyProgram(req, res) {
     }
 
     // URL stored inside QR code
-    const qrUrl =
-      `${process.env.FRONTEND_URL}/loyalty/scan/${loyaltyProgram.qrCodeToken}`;
+    const qrUrl = `${process.env.FRONTEND_URL}/loyalty/scan/${loyaltyProgram.qrCodeToken}`;
 
     // QR file name
-    const qrFileName =
-      `loyalty-${loyaltyProgram.id}-qr.png`;
+    const qrFileName = `loyalty-${loyaltyProgram.id}-qr.png`;
 
     // Full local file path
-    const qrFilePath = path.join(
-      qrDirectory,
-      qrFileName
-    );
+    const qrFilePath = path.join(qrDirectory, qrFileName);
 
     // Generate QR code
-    await QRCode.toFile(
-      qrFilePath,
-      qrUrl,
-      {
-        type: 'png',
-        width: 500,
-        margin: 2,
-        errorCorrectionLevel: 'H',
-      }
-    );
+    await QRCode.toFile(qrFilePath, qrUrl, {
+      type: 'png',
+      width: 500,
+      margin: 2,
+      errorCorrectionLevel: 'H',
+    });
 
     // Path saved in database
-    const qrCodePath =
-      `/uploads/loyalty/qr/${qrFileName}`;
+    const qrCodePath = `/uploads/loyalty/qr/${qrFileName}`;
 
     loyaltyProgram.qrCodePath = qrCodePath;
 
@@ -465,45 +410,33 @@ async function createLoyaltyProgram(req, res) {
 
         programName: loyaltyProgram.programName,
 
-        requiredStarCollection:
-          loyaltyProgram.requiredStarCollection,
+        requiredStarCollection: loyaltyProgram.requiredStarCollection,
 
-        qrCodeScanIntervalValue:
-          loyaltyProgram.qrCodeScanIntervalValue,
+        qrCodeScanIntervalValue: loyaltyProgram.qrCodeScanIntervalValue,
 
-        qrCodeScanIntervalUnit:
-          loyaltyProgram.qrCodeScanIntervalUnit,
+        qrCodeScanIntervalUnit: loyaltyProgram.qrCodeScanIntervalUnit,
 
-        programRules:
-          loyaltyProgram.programRules,
+        programRules: loyaltyProgram.programRules,
 
-        enablePinVerification:
-          loyaltyProgram.enablePinVerification,
+        enablePinVerification: loyaltyProgram.enablePinVerification,
 
         status: loyaltyProgram.status,
 
-        qrCodeToken:
-          loyaltyProgram.qrCodeToken,
+        qrCodeToken: loyaltyProgram.qrCodeToken,
 
         qrUrl,
 
         qrCodePath,
 
-        qrCodeUrl:
-          `${process.env.BASE_URL || 'http://localhost:5000'}${qrCodePath}`,
+        qrCodeUrl: `${process.env.BASE_URL || 'http://localhost:5000'}${qrCodePath}`,
 
-        createdAt:
-          loyaltyProgram.createdAt,
+        createdAt: loyaltyProgram.createdAt,
 
-        updatedAt:
-          loyaltyProgram.updatedAt,
+        updatedAt: loyaltyProgram.updatedAt,
       },
     });
   } catch (error) {
-    console.error(
-      'Create loyalty program error:',
-      error
-    );
+    console.error('Create loyalty program error:', error);
 
     return res.status(500).json({
       message: 'Something went wrong',
@@ -587,7 +520,91 @@ async function getLoyaltyPrograms(req, res) {
   }
 }
 
+async function generateLoyaltyPin(req, res) {
+  try {
+    const { scanId } = req.params;
 
+    const vendorId = req.user.id;
+
+    if (!scanId) {
+      return res.status(400).json({
+        message: 'Scan ID is required',
+      });
+    }
+
+    // Find the scan
+    const loyaltyScan = await LoyaltyScan.findByPk(scanId);
+
+    if (!loyaltyScan) {
+      return res.status(404).json({
+        message: 'Loyalty scan not found',
+      });
+    }
+
+    // Find the loyalty program
+    const loyaltyProgram = await LoyaltyProgram.findOne({
+      where: {
+        id: loyaltyScan.loyaltyProgramId,
+        vendorId,
+        status: 'active',
+      },
+    });
+
+    if (!loyaltyProgram) {
+      return res.status(403).json({
+        message: 'You are not authorized for this loyalty program',
+      });
+    }
+
+    // Make sure PIN verification is enabled
+    if (!loyaltyProgram.enablePinVerification) {
+      return res.status(400).json({
+        message: 'PIN verification is disabled for this loyalty program',
+      });
+    }
+
+    // Don't generate another PIN after verification
+    if (loyaltyScan.verifiedAt) {
+      return res.status(400).json({
+        message: 'This scan has already been verified',
+      });
+    }
+
+    // Generate random 3-digit PIN
+    const pin = Math.floor(100 + Math.random() * 900).toString();
+
+    loyaltyScan.pin = pin;
+    loyaltyScan.pinGeneratedAt = new Date();
+
+    // PIN expires after 5 minutes
+    const pinExpiresAt = new Date(
+      Date.now() + 5 * 60 * 1000
+    );
+
+    loyaltyScan.pinExpiresAt = pinExpiresAt;
+
+    await loyaltyScan.save();
+
+    return res.status(200).json({
+      message: 'PIN generated successfully',
+
+      scanId: loyaltyScan.id,
+
+      pin: loyaltyScan.pin,
+
+      pinExpiresAt: loyaltyScan.pinExpiresAt,
+    });
+  } catch (error) {
+    console.error(
+      'Generate loyalty PIN error:',
+      error
+    );
+
+    return res.status(500).json({
+      message: 'Something went wrong',
+    });
+  }
+}
 
 module.exports = {
   getVendorProfile,
@@ -595,4 +612,5 @@ module.exports = {
   changeVendorPassword,
   createLoyaltyProgram,
   getLoyaltyPrograms,
+  generateLoyaltyPin,
 };

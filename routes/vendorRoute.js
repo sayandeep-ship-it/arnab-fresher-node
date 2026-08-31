@@ -5,6 +5,7 @@ const {
   changeVendorPassword,
   createLoyaltyProgram,
   getLoyaltyPrograms,
+  generateLoyaltyPin,
 } = require('../controllers/vendorController.js');
 
 const authMiddleware = require('../middlewares/authMiddleware.js');
@@ -27,5 +28,7 @@ router.put('/change-password', authMiddleware, roleMiddleware('vendor'), changeV
 
 //Dashboard route
 router.get('/dashboard', authMiddleware, roleMiddleware('vendor'), getLoyaltyPrograms);
+
+router.post('/loyalty/generate-pin/:scanId', authMiddleware, roleMiddleware('vendor'), generateLoyaltyPin);
 
 module.exports = router;
