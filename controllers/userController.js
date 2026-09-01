@@ -515,9 +515,154 @@ async function scanLoyaltyProgram(req, res) {
     });
   }
 }
+
+async function verifyLoyaltyPin(req, res) {
+  try {
+    const { scanId } = req.params;
+    const { pin } = req.body || {};
+
+    // Customer ID comes from JWT
+    const userId = req.user.id;
+
+    // Validate scanId
+    if (!scanId) {
+      return res.status(400).json({
+        message: 'Scan ID is required',
+      });
+    }
+
+    // Validate PIN
+    if (!pin) {
+      return res.status(400).json({
+        message: 'PIN is required',
+      });
+    }
+
+    const enteredPin = String(pin).trim();
+
+    if (!/^\d{3}$/.test(enteredPin)) {
+      return res.status(400).json({
+        message: 'PIN must be exactly 3 digits',
+      });
+    }
+
+    // Find customer's loyalty scan
+    const loyaltyScan = await LoyaltyScan.findOne({
+      where: {
+        id: scanId,
+        userId,
+      },
+    });
+
+    if (!loyaltyScan) {
+      return res.status(404).json({
+        message: 'Loyalty scan not found',
+      });
+    }
+
+    // Check whether PIN was generated
+    if (!loyaltyScan.pin) {
+      return res.status(400).json({
+        message: 'PIN has not been generated yet',
+      });
+    }
+
+    // Check whether this scan was already completed
+    if (loyaltyScan.starAdded) {
+      return res.status(400).json({
+        message: 'Star has already been added for this scan',
+      });
+    }
+
+    // Check PIN expiry
+    if (
+      loyaltyScan.pinExpiresAt &&
+      new Date() > new Date(loyaltyScan.pinExpiresAt)
+    ) {
+      return res.status(400).json({
+        message: 'PIN has expired',
+      });
+    }
+
+    // Verify PIN
+    if (enteredPin !== loyaltyScan.pin) {
+      return res.status(400).json({
+        message: 'Invalid PIN',
+      });
+    }
+
+    // Find the loyalty program
+    const loyaltyProgram = await LoyaltyProgram.findOne({
+      where: {
+        id: loyaltyScan.loyaltyProgramId,
+        status: 'active',
+      },
+    });
+
+    if (!loyaltyProgram) {
+      return res.status(404).json({
+        message: 'Loyalty program not found or inactive',
+      });
+    }
+
+    // Find user's loyalty program record
+    let userLoyaltyProgram = await UserLoyaltyProgram.findOne({
+      where: {
+        userId,
+        loyaltyProgramId: loyaltyProgram.id,
+      },
+    });
+
+    // If user has not enrolled yet, create record
+    if (!userLoyaltyProgram) {
+      userLoyaltyProgram = await UserLoyaltyProgram.create({
+        userId,
+        loyaltyProgramId: loyaltyProgram.id,
+        obtainedStars: 0,
+      });
+    }
+
+    // Add one star
+    userLoyaltyProgram.obtainedStars += 1;
+
+    await userLoyaltyProgram.save();
+
+    // Mark scan as completed
+    loyaltyScan.verifiedAt = new Date();
+    loyaltyScan.starAdded = true;
+
+    await loyaltyScan.save();
+
+    return res.status(200).json({
+      message: 'PIN verified and star added successfully',
+
+      pinRequired: true,
+
+      starAdded: true,
+
+      data: {
+        scanId: loyaltyScan.id,
+
+        loyaltyProgramId: loyaltyProgram.id,
+
+        userId,
+
+        obtainedStars: userLoyaltyProgram.obtainedStars,
+      },
+    });
+  } catch (error) {
+    console.error('Verify loyalty PIN error:', error);
+
+    return res.status(500).json({
+      message: 'Something went wrong',
+    });
+  }
+}
+
 module.exports = {
   getStores,
   getStoreDetails,
   getLoyaltyProgramDetails,
   scanLoyaltyProgram,
+  verifyLoyaltyPin,
 };
