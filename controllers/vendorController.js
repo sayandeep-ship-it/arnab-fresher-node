@@ -5,7 +5,7 @@ const path = require('path');
 
 const bcrypt = require('bcryptjs');
 
-const { User, VendorProfile, LoyaltyProgram , LoyaltyScan} = require('../models');
+const { User, VendorProfile, LoyaltyProgram , LoyaltyScan , UserLoyaltyProgram} = require('../models');
 
 async function getVendorProfile(req, res) {
   try {
@@ -606,6 +606,54 @@ async function generateLoyaltyPin(req, res) {
   }
 }
 
+async function getDashboardSummary(req, res) {
+  try {
+    const vendorId = req.user.id;
+
+    // Total active loyalty programs
+    const totalActiveLoyaltyPrograms = await LoyaltyProgram.count({
+      where: {
+        vendorId,
+        status: 'active',
+      },
+    });
+
+    // Total unique customers
+    const totalCustomers = await UserLoyaltyProgram.count({
+      distinct: true,
+      col: 'userId',
+      include: [
+        {
+          model: LoyaltyProgram,
+          as: 'loyaltyProgram',
+          where: {
+            vendorId,
+          },
+          attributes: [],
+        },
+      ],
+    });
+
+    return res.status(200).json({
+      message: 'Dashboard summary fetched successfully',
+
+      data: {
+        totalActiveLoyaltyPrograms,
+        totalCustomers,
+
+        totalRewardsRedeemed: 0,
+        totalFraudAlerts: 0,
+      },
+    });
+  } catch (error) {
+    console.error('Get dashboard summary error:', error);
+
+    return res.status(500).json({
+      message: 'Something went wrong',
+    });
+  }
+}
+
 module.exports = {
   getVendorProfile,
   updateVendorProfile,
@@ -613,4 +661,5 @@ module.exports = {
   createLoyaltyProgram,
   getLoyaltyPrograms,
   generateLoyaltyPin,
+  getDashboardSummary,
 };

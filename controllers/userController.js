@@ -406,6 +406,270 @@ async function getLoyaltyProgramDetails(req, res) {
   }
 }
 
+async function getDashboardMetrics(req, res) {
+  try {
+    const userId = req.user.id;
+
+    const userLoyaltyPrograms = await UserLoyaltyProgram.findAll({
+      where: {
+        userId,
+      },
+
+      include: [
+        {
+          model: LoyaltyProgram,
+          as: 'loyaltyProgram',
+          attributes: [
+            'id',
+            'requiredStarCollection',
+            'status',
+          ],
+        },
+      ],
+
+      attributes: [
+        'id',
+        'userId',
+        'loyaltyProgramId',
+        'obtainedStars',
+      ],
+    });
+
+    let totalStarsCollected = 0;
+    let activeLoyaltyPrograms = 0;
+    let rewardsEarned = 0;
+
+    for (const record of userLoyaltyPrograms) {
+      const obtainedStars = Number(
+        record.obtainedStars || 0
+      );
+
+      const requiredStars = Number(
+        record.loyaltyProgram?.requiredStarCollection || 0
+      );
+
+      // Total stars collected by customer
+      totalStarsCollected += obtainedStars;
+
+      // Active loyalty programs in which customer participated
+      if (
+        record.loyaltyProgram &&
+        record.loyaltyProgram.status === 'active'
+      ) {
+        activeLoyaltyPrograms++;
+      }
+
+      // Rewards earned from this loyalty program
+      if (requiredStars > 0) {
+        rewardsEarned += Math.floor(
+          obtainedStars / requiredStars
+        );
+      }
+    }
+
+    return res.status(200).json({
+      message: 'Dashboard metrics fetched successfully',
+
+      data: {
+        totalStarsCollected,
+        rewardsEarned,
+        activeLoyaltyPrograms,
+        pendingRewards: 0,
+      },
+    });
+  } catch (error) {
+    console.error(
+      'Get dashboard metrics error:',
+      error
+    );
+
+    return res.status(500).json({
+      message: 'Something went wrong',
+    });
+  }
+}
+
+async function getDashboardStores(req, res) {
+  try {
+    const userId = req.user.id;
+
+    const vendors = await User.findAll({
+      attributes: [
+        'id',
+        'firstName',
+        'lastName',
+      ],
+
+      include: [
+        {
+          model: Role,
+          as: 'roles',
+
+          where: {
+            name: 'vendor',
+          },
+
+          attributes: [],
+
+          through: {
+            attributes: [],
+          },
+        },
+
+        {
+          model: VendorProfile,
+          as: 'vendorProfile',
+
+          where: {
+            isAddress: true,
+          },
+
+          attributes: [
+            'id',
+            'profilePicture',
+            'streetAddress',
+            'city',
+            'state',
+            'country',
+            'pincode',
+          ],
+        },
+
+        {
+          model: LoyaltyProgram,
+          as: 'loyaltyPrograms',
+
+          where: {
+            status: 'active',
+          },
+
+          required: false,
+
+          attributes: [
+            'id',
+            'image',
+            'programName',
+            'requiredStarCollection',
+            'qrCodeScanIntervalValue',
+            'qrCodeScanIntervalUnit',
+            'programRules',
+            'enablePinVerification',
+            'status',
+            'createdAt',
+          ],
+
+          include: [
+            {
+              model: UserLoyaltyProgram,
+              as: 'customers',
+
+              where: {
+                userId,
+              },
+
+              required: false,
+
+              attributes: [
+                'id',
+                'userId',
+                'loyaltyProgramId',
+                'obtainedStars',
+              ],
+            },
+          ],
+        },
+      ],
+
+      order: [['id', 'DESC']],
+    });
+
+    const stores = vendors.map((vendor) => {
+      const profile = vendor.vendorProfile;
+
+      const vendorName =
+        `${vendor.firstName || ''} ${vendor.lastName || ''}`.trim();
+
+      const loyaltyPrograms =
+        (vendor.loyaltyPrograms || []).map((program) => {
+          const customerRecord =
+            program.customers?.[0];
+
+          return {
+            id: program.id,
+
+            image: program.image,
+
+            programName: program.programName,
+
+            requiredStarCollection:
+              program.requiredStarCollection,
+
+            obtainedStars:
+              customerRecord?.obtainedStars || 0,
+
+            qrCodeScanIntervalValue:
+              program.qrCodeScanIntervalValue,
+
+            qrCodeScanIntervalUnit:
+              program.qrCodeScanIntervalUnit,
+
+            programRules: program.programRules,
+
+            enablePinVerification:
+              program.enablePinVerification,
+
+            status: program.status,
+
+            createdAt: program.createdAt,
+          };
+        });
+
+      return {
+        id: vendor.id,
+
+        name: vendorName,
+
+        profilePicture:
+          profile?.profilePicture || null,
+
+        address: {
+          streetAddress:
+            profile?.streetAddress || null,
+
+          city:
+            profile?.city || null,
+
+          state:
+            profile?.state || null,
+
+          country:
+            profile?.country || null,
+
+          pincode:
+            profile?.pincode || null,
+        },
+
+        loyaltyPrograms,
+      };
+    });
+
+    return res.status(200).json({
+      message: 'Dashboard stores fetched successfully',
+
+      stores,
+    });
+  } catch (error) {
+    console.error(
+      'Get dashboard stores error:',
+      error
+    );
+
+    return res.status(500).json({
+      message: 'Something went wrong',
+    });
+  }
+}
+
 async function scanLoyaltyProgram(req, res) {
   try {
     const { qrCodeToken } = req.params;
@@ -665,4 +929,6 @@ module.exports = {
   getLoyaltyProgramDetails,
   scanLoyaltyProgram,
   verifyLoyaltyPin,
+  getDashboardMetrics,
+  getDashboardStores,
 };
