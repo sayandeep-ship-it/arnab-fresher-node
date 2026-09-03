@@ -1,6 +1,6 @@
 const { Op } = require('sequelize');
 
-const { User, Role, VendorProfile, LoyaltyProgram, LoyaltyScan, UserLoyaltyProgram } = require('../models');
+const { User, Role, VendorProfile, LoyaltyProgram, LoyaltyScan, UserLoyaltyProgram,Notification } = require('../models');
 
 async function getStores(req, res) {
   try {
@@ -804,6 +804,7 @@ async function verifyLoyaltyPin(req, res) {
 
     const enteredPin = String(pin).trim();
 
+    // PIN must be exactly 3 digits
     if (!/^\d{3}$/.test(enteredPin)) {
       return res.status(400).json({
         message: 'PIN must be exactly 3 digits',
@@ -824,34 +825,10 @@ async function verifyLoyaltyPin(req, res) {
       });
     }
 
-    // Check whether PIN was generated
-    if (!loyaltyScan.pin) {
-      return res.status(400).json({
-        message: 'PIN has not been generated yet',
-      });
-    }
-
     // Check whether this scan was already completed
     if (loyaltyScan.starAdded) {
       return res.status(400).json({
         message: 'Star has already been added for this scan',
-      });
-    }
-
-    // Check PIN expiry
-    if (
-      loyaltyScan.pinExpiresAt &&
-      new Date() > new Date(loyaltyScan.pinExpiresAt)
-    ) {
-      return res.status(400).json({
-        message: 'PIN has expired',
-      });
-    }
-
-    // Verify PIN
-    if (enteredPin !== loyaltyScan.pin) {
-      return res.status(400).json({
-        message: 'Invalid PIN',
       });
     }
 
@@ -866,6 +843,37 @@ async function verifyLoyaltyPin(req, res) {
     if (!loyaltyProgram) {
       return res.status(404).json({
         message: 'Loyalty program not found or inactive',
+      });
+    }
+
+    // Check whether PIN verification is enabled
+    if (!loyaltyProgram.enablePinVerification) {
+      return res.status(400).json({
+        message: 'PIN verification is disabled for this loyalty program',
+      });
+    }
+
+    // Check whether vendor generated a PIN
+    if (!loyaltyProgram.pin) {
+      return res.status(400).json({
+        message: 'PIN has not been generated yet',
+      });
+    }
+
+    // Check PIN expiry
+    if (
+      !loyaltyProgram.pinExpiresAt ||
+      new Date() > new Date(loyaltyProgram.pinExpiresAt)
+    ) {
+      return res.status(400).json({
+        message: 'PIN has expired',
+      });
+    }
+
+    // Verify PIN
+    if (enteredPin !== String(loyaltyProgram.pin)) {
+      return res.status(400).json({
+        message: 'Invalid PIN',
       });
     }
 
@@ -923,6 +931,72 @@ async function verifyLoyaltyPin(req, res) {
   }
 }
 
+async function getNotifications(req, res) {
+  try {
+    const userId = req.user.id;
+
+    const notifications = await Notification.findAll({
+      where: {
+        userId,
+      },
+      order: [['createdAt', 'DESC']],
+    });
+
+    return res.status(200).json({
+      message: 'Notifications fetched successfully',
+      data: notifications,
+    });
+  } catch (error) {
+    console.error('Get notifications error:', error);
+
+    return res.status(500).json({
+      message: 'Something went wrong',
+      error: error.message,
+    });
+  }
+}
+
+const markNotificationAsRead = async (req, res) => {
+  try {
+    const { notificationId } = req.params;
+    const userId = req.user.id;
+
+    const notification = await Notification.findOne({
+      where: {
+        id: notificationId,
+        userId,
+      },
+    });
+
+    if (!notification) {
+      return res.status(404).json({
+        message: 'Notification not found',
+      });
+    }
+
+    if (notification.isRead) {
+      return res.status(200).json({
+        message: 'Notification is already marked as read',
+        data: notification,
+      });
+    }
+
+    notification.isRead = true;
+    await notification.save();
+
+    return res.status(200).json({
+      message: 'Notification marked as read successfully',
+      data: notification,
+    });
+  } catch (error) {
+    console.error('Mark notification as read error:', error);
+
+    return res.status(500).json({
+      message: 'Internal server error',
+    });
+  }
+};
+
 module.exports = {
   getStores,
   getStoreDetails,
@@ -931,4 +1005,6 @@ module.exports = {
   verifyLoyaltyPin,
   getDashboardMetrics,
   getDashboardStores,
+  getNotifications,
+  markNotificationAsRead,
 };

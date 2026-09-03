@@ -60,6 +60,21 @@ module.exports = (sequelize, DataTypes) => {
         allowNull: true,
       },
 
+      pin: {
+        type: DataTypes.STRING(3),
+        allowNull: true,
+      },
+
+      pinGeneratedAt: {
+        type: DataTypes.DATE,
+        allowNull: true,
+      },
+
+      pinExpiresAt: {
+        type: DataTypes.DATE,
+        allowNull: true,
+      },
+
       status: {
         type: DataTypes.ENUM('active', 'inactive'),
         allowNull: false,

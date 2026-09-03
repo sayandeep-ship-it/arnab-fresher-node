@@ -4,6 +4,8 @@ const app = require('./app');
 
 const sequelize = require('./config/database.js');
 
+require('./cron/notificationCron');
+
 const PORT = process.env.PORT || 5000;
 
 async function startServer() {

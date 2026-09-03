@@ -17,6 +17,10 @@ const LoyaltyScan = require('./loyaltyScan')(sequelize, DataTypes);
 
 const UserLoyaltyProgram = require('./userLoyaltyProgram')(sequelize, DataTypes);
 
+const LoyaltyRedemption = require('./loyaltyRedemption')(sequelize, DataTypes);
+
+const Notification = require('./notification')(sequelize, DataTypes);
+
 User.hasMany(Otp, {
   foreignKey: 'userId',
 });
@@ -113,6 +117,51 @@ UserLoyaltyProgram.belongsTo(LoyaltyProgram, {
   as: 'loyaltyProgram',
 });
 
+User.hasMany(LoyaltyRedemption, {
+  foreignKey: 'userId',
+  as: 'redemptions',
+});
+
+LoyaltyRedemption.belongsTo(User, {
+  foreignKey: 'userId',
+  as: 'user',
+});
+
+LoyaltyProgram.hasMany(LoyaltyRedemption, {
+  foreignKey: 'loyaltyProgramId',
+  as: 'redemptions',
+});
+
+LoyaltyRedemption.belongsTo(LoyaltyProgram, {
+  foreignKey: 'loyaltyProgramId',
+  as: 'loyaltyProgram',
+});
+
+User.hasMany(Notification, {
+  foreignKey: 'userId',
+  as: 'notifications',
+});
+
+Notification.belongsTo(User, {
+  foreignKey: 'userId',
+  as: 'user',
+});
+
+LoyaltyProgram.hasMany(Notification, {
+  foreignKey: 'loyaltyProgramId',
+  as: 'notifications',
+});
+
+Notification.belongsTo(LoyaltyProgram, {
+  foreignKey: 'loyaltyProgramId',
+  as: 'loyaltyProgram',
+});
+
+Notification.belongsTo(User, {
+  foreignKey: 'vendorId',
+  as: 'vendor',
+});
+
 module.exports = {
   sequelize,
 
@@ -131,4 +180,8 @@ module.exports = {
   LoyaltyScan,
 
   UserLoyaltyProgram,
+
+  LoyaltyRedemption,
+
+  Notification,
 };

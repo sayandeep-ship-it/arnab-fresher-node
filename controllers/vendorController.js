@@ -5,7 +5,7 @@ const path = require('path');
 
 const bcrypt = require('bcryptjs');
 
-const { User, VendorProfile, LoyaltyProgram , LoyaltyScan , UserLoyaltyProgram} = require('../models');
+const { User, VendorProfile, LoyaltyProgram, UserLoyaltyProgram,LoyaltyRedemption } = require('../models');
 
 async function getVendorProfile(req, res) {
   try {
@@ -522,83 +522,54 @@ async function getLoyaltyPrograms(req, res) {
 
 async function generateLoyaltyPin(req, res) {
   try {
-    const { scanId } = req.params;
-
+    const { loyaltyProgramId } = req.body || {};
     const vendorId = req.user.id;
 
-    if (!scanId) {
+    if (!loyaltyProgramId) {
       return res.status(400).json({
-        message: 'Scan ID is required',
+        message: 'Loyalty program ID is required',
       });
     }
 
-    // Find the scan
-    const loyaltyScan = await LoyaltyScan.findByPk(scanId);
-
-    if (!loyaltyScan) {
-      return res.status(404).json({
-        message: 'Loyalty scan not found',
-      });
-    }
-
-    // Find the loyalty program
     const loyaltyProgram = await LoyaltyProgram.findOne({
       where: {
-        id: loyaltyScan.loyaltyProgramId,
+        id: loyaltyProgramId,
         vendorId,
         status: 'active',
       },
     });
 
     if (!loyaltyProgram) {
-      return res.status(403).json({
-        message: 'You are not authorized for this loyalty program',
+      return res.status(404).json({
+        message: 'Loyalty program not found',
       });
     }
 
-    // Make sure PIN verification is enabled
     if (!loyaltyProgram.enablePinVerification) {
       return res.status(400).json({
         message: 'PIN verification is disabled for this loyalty program',
       });
     }
 
-    // Don't generate another PIN after verification
-    if (loyaltyScan.verifiedAt) {
-      return res.status(400).json({
-        message: 'This scan has already been verified',
-      });
-    }
-
-    // Generate random 3-digit PIN
     const pin = Math.floor(100 + Math.random() * 900).toString();
 
-    loyaltyScan.pin = pin;
-    loyaltyScan.pinGeneratedAt = new Date();
+    const pinGeneratedAt = new Date();
 
-    // PIN expires after 5 minutes
-    const pinExpiresAt = new Date(
-      Date.now() + 5 * 60 * 1000
-    );
+    const pinExpiresAt = new Date(Date.now() + 5 * 60 * 1000);
 
-    loyaltyScan.pinExpiresAt = pinExpiresAt;
+    loyaltyProgram.pin = pin;
+    loyaltyProgram.pinGeneratedAt = pinGeneratedAt;
+    loyaltyProgram.pinExpiresAt = pinExpiresAt;
 
-    await loyaltyScan.save();
+    await loyaltyProgram.save();
 
     return res.status(200).json({
       message: 'PIN generated successfully',
-
-      scanId: loyaltyScan.id,
-
-      pin: loyaltyScan.pin,
-
-      pinExpiresAt: loyaltyScan.pinExpiresAt,
+      pin,
+      pinExpiresAt,
     });
   } catch (error) {
-    console.error(
-      'Generate loyalty PIN error:',
-      error
-    );
+    console.error('Generate loyalty PIN error:', error);
 
     return res.status(500).json({
       message: 'Something went wrong',
@@ -654,6 +625,173 @@ async function getDashboardSummary(req, res) {
   }
 }
 
+async function getCustomersForRedemption(req, res) {
+  try {
+    const { loyaltyProgramId } = req.params;
+
+    if (!loyaltyProgramId) {
+      return res.status(400).json({
+        message: 'Loyalty program ID is required',
+      });
+    }
+
+    const loyaltyProgram = await LoyaltyProgram.findOne({
+      where: {
+        id: loyaltyProgramId,
+        status: 'active',
+      },
+    });
+
+    if (!loyaltyProgram) {
+      return res.status(404).json({
+        message: 'Loyalty program not found or inactive',
+      });
+    }
+
+    const customers = await UserLoyaltyProgram.findAll({
+      where: {
+        loyaltyProgramId: loyaltyProgram.id,
+      },
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: ['id', 'firstName', 'lastName', 'email', 'phone'],
+        },
+      ],
+    });
+
+    const eligibleCustomers = customers.filter(
+      (customer) => customer.obtainedStars >= loyaltyProgram.requiredStarCollection
+    );
+
+    return res.status(200).json({
+      message: 'Eligible customers fetched successfully',
+      data: {
+        loyaltyProgramId: loyaltyProgram.id,
+        programName: loyaltyProgram.programName,
+        requiredStarCollection: loyaltyProgram.requiredStarCollection,
+        customers: eligibleCustomers,
+      },
+    });
+  } catch (error) {
+    console.error('Get customers for redemption error:', error);
+
+    return res.status(500).json({
+      message: 'Something went wrong',
+      error: error.message,
+    });
+  }
+}
+async function redeemCustomer(req, res) {
+  try {
+    const { loyaltyProgramId, userId } = req.body || {};
+
+    const vendorId = req.user.id;
+
+    if (!loyaltyProgramId) {
+      return res.status(400).json({
+        message: 'Loyalty program ID is required',
+      });
+    }
+
+    if (!userId) {
+      return res.status(400).json({
+        message: 'User ID is required',
+      });
+    }
+
+    const loyaltyProgram = await LoyaltyProgram.findOne({
+      where: {
+        id: loyaltyProgramId,
+        status: 'active',
+      },
+    });
+
+    if (!loyaltyProgram) {
+      return res.status(404).json({
+        message: 'Loyalty program not found or inactive',
+      });
+    }
+
+    const userLoyaltyProgram = await UserLoyaltyProgram.findOne({
+      where: {
+        userId,
+        loyaltyProgramId: loyaltyProgram.id,
+      },
+      include: [
+        {
+          model: User,
+          as: 'user',
+          attributes: [
+            'id',
+            'firstName',
+            'lastName',
+            'email',
+            'phone',
+          ],
+        },
+      ],
+    });
+
+    if (!userLoyaltyProgram) {
+      return res.status(404).json({
+        message: 'Customer is not enrolled in this loyalty program',
+      });
+    }
+
+    if (
+      userLoyaltyProgram.obtainedStars <
+      loyaltyProgram.requiredStarCollection
+    ) {
+      return res.status(400).json({
+        message: 'Customer has not earned enough stars to redeem',
+        data: {
+          obtainedStars: userLoyaltyProgram.obtainedStars,
+          requiredStars: loyaltyProgram.requiredStarCollection,
+        },
+      });
+    }
+
+    const starsRedeemed = loyaltyProgram.requiredStarCollection;
+
+    const redemption = await LoyaltyRedemption.create({
+      userId,
+      loyaltyProgramId: loyaltyProgram.id,
+      vendorId,
+      starsRedeemed,
+      status: 'redeemed',
+      redeemedAt: new Date(),
+    });
+
+    userLoyaltyProgram.obtainedStars -= starsRedeemed;
+
+    await userLoyaltyProgram.save();
+
+    return res.status(200).json({
+      message: 'Customer redeemed successfully',
+      data: {
+        redemptionId: redemption.id,
+        userId,
+        customer: userLoyaltyProgram.user,
+        loyaltyProgramId: loyaltyProgram.id,
+        programName: loyaltyProgram.programName,
+        starsRedeemed,
+        remainingStars: userLoyaltyProgram.obtainedStars,
+        status: redemption.status,
+        redeemedAt: redemption.redeemedAt,
+      },
+    });
+  } catch (error) {
+    console.error('Customer redeem error:', error);
+
+    return res.status(500).json({
+      message: 'Something went wrong',
+      error: error.message,
+    });
+  }
+}
+
 module.exports = {
   getVendorProfile,
   updateVendorProfile,
@@ -662,4 +800,6 @@ module.exports = {
   getLoyaltyPrograms,
   generateLoyaltyPin,
   getDashboardSummary,
+  getCustomersForRedemption,
+  redeemCustomer,
 };

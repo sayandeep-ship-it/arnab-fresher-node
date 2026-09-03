@@ -7,6 +7,8 @@ const {
   getLoyaltyPrograms,
   generateLoyaltyPin,
   getDashboardSummary,
+  getCustomersForRedemption,
+  redeemCustomer,
 } = require('../controllers/vendorController.js');
 
 const authMiddleware = require('../middlewares/authMiddleware.js');
@@ -22,15 +24,20 @@ router.post('/create', authMiddleware, roleMiddleware('vendor'), upload.single('
 
 //get vendor profile
 router.get('/profile', authMiddleware, roleMiddleware('vendor'), getVendorProfile);
-
-router.put('/update-profile', authMiddleware, roleMiddleware('vendor'), upload.single('profilePicture'), updateVendorProfile);
-
+router.put(
+  '/update-profile',
+  authMiddleware,
+  roleMiddleware('vendor'),
+  upload.single('profilePicture'),
+  updateVendorProfile
+);
 router.put('/change-password', authMiddleware, roleMiddleware('vendor'), changeVendorPassword);
 
 //Dashboard route
 router.get('/loyalty', authMiddleware, roleMiddleware('vendor'), getLoyaltyPrograms);
-
-router.post('/loyalty/generate-pin/:scanId', authMiddleware, roleMiddleware('vendor'), generateLoyaltyPin);
+router.post('/loyalty/generate-pin', authMiddleware, roleMiddleware('vendor'), generateLoyaltyPin);
 router.get('/dashboard/summary', authMiddleware, roleMiddleware('vendor'), getDashboardSummary);
+router.get('/loyalty/redeem/customers/:loyaltyProgramId', authMiddleware, getCustomersForRedemption);
+router.post('/loyalty/redeem', authMiddleware, redeemCustomer);
 
 module.exports = router;
